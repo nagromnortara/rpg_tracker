@@ -56,7 +56,7 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
     }
   }
 
-  const canSubmit = !!selectedConditionId && (!needsDiceRoll || parseInt(rolledTurns) > 0)
+  const canSubmit = !!selectedConditionId && firstPhase !== null && (!needsDiceRoll || parseInt(rolledTurns) > 0)
 
   return (
     <Modal title={`Apply Condition — ${character.name}`} onClose={onClose}>
@@ -103,6 +103,13 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
             ))}
           </div>
         </div>
+
+        {/* No phases warning */}
+        {selectedConditionId && !firstPhase && (
+          <p style={{ color: 'var(--text-danger)', fontSize: '0.82rem', margin: 0 }}>
+            This condition has no phases defined. Add at least one phase in Settings before applying.
+          </p>
+        )}
 
         {/* First phase info */}
         {firstPhase && (

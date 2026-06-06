@@ -16,7 +16,7 @@ export default function AdminPage() {
   const [showSettings, setShowSettings] = useState(false)
   const [showInitiative, setShowInitiative] = useState(false)
 
-  const playerBaseUrl = window.location.origin
+  const playerBaseUrl = `${window.location.origin}${import.meta.env.BASE_URL.replace(/\/$/, '')}`
 
   if (data.loading) return <LoadingScreen />
   if (data.error) return <ErrorScreen message={data.error} />

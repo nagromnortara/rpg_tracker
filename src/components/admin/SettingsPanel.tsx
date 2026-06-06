@@ -460,11 +460,16 @@ function CharactersTab({ characters, playerBaseUrl, actions }: {
             Inactive ({inactive.length})
           </summary>
           {inactive.map(char => (
-            <div key={char.id} style={{ padding: '0.4rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+            <div key={char.id} style={{ padding: '0.4rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <span>{char.name}</span>
-              <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => copyLink(char)}>
-                {copiedId === char.id ? '✓' : 'Link'}
-              </button>
+              <div style={{ display: 'flex', gap: '0.4rem' }}>
+                <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => actions.reactivateCharacter(char.id)}>
+                  Reactivate
+                </button>
+                <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => copyLink(char)}>
+                  {copiedId === char.id ? '✓' : 'Link'}
+                </button>
+              </div>
             </div>
           ))}
         </details>
