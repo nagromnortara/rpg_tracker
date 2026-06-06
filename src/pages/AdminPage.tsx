@@ -24,6 +24,12 @@ export default function AdminPage() {
 
   const { campaign, groups, conditions, phases, characters, charConditions } = data
   const activeChars = characters.filter(c => c.is_active && !c.is_npc)
+  const tacticalSorted = [...characters]
+    .filter(c => c.is_active && c.initiative_order !== null)
+    .sort((a, b) => (a.initiative_order ?? 0) - (b.initiative_order ?? 0))
+  const currentTurnCharId = campaign.mode === 'tactical'
+    ? tacticalSorted[campaign.current_initiative_index % Math.max(tacticalSorted.length, 1)]?.id
+    : undefined
 
   async function handleSwitchToTactical(rows: { tempId: string; characterId: string | null; name: string; isNpc: boolean }[], npcNames: string[]) {
     // Create NPC characters first
@@ -100,11 +106,10 @@ export default function AdminPage() {
               campaign={campaign}
               characters={characters}
               charConditions={charConditions}
-              groups={groups}
               conditions={conditions}
               phases={phases}
+              currentCharId={currentTurnCharId}
               onEndTurn={actions.endTurnAdvance}
-              onApplyCondition={actions.applyCondition}
             />
           )}
 
@@ -130,45 +135,39 @@ export default function AdminPage() {
           )}
         </aside>
 
-        {/* Main area: characters (exploration mode shows grid, tactical is in sidebar) */}
+        {/* Main area: character cards for both modes */}
         <main style={{ flex: 1, padding: '1.5rem', overflowY: 'auto' }}>
-          {campaign.mode === 'exploration' ? (
-            <>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-secondary)' }}>
-                  Characters
-                </h2>
-              </div>
-              {activeChars.length === 0 ? (
+          {(() => {
+            const displayChars = campaign.mode === 'tactical' ? tacticalSorted : activeChars
+            if (displayChars.length === 0) {
+              return (
                 <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
                   <p>No characters yet. Add characters in Settings → Characters.</p>
                 </div>
-              ) : (
-                <div style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
-                  gap: '1rem',
-                }}>
-                  {activeChars.map(char => (
-                    <CharacterCard
-                      key={char.id}
-                      character={char}
-                      charConditions={charConditions}
-                      groups={groups}
-                      conditions={conditions}
-                      phases={phases}
-                      turnsPerMinute={campaign.turns_per_minute}
-                      onApplyCondition={actions.applyCondition}
-                    />
-                  ))}
-                </div>
-              )}
-            </>
-          ) : (
-            <div style={{ color: 'var(--text-muted)', textAlign: 'center', paddingTop: '3rem' }}>
-              <p>Tactical mode active — character cards are in the left panel.</p>
-            </div>
-          )}
+              )
+            }
+            return (
+              <div style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+                gap: '1rem',
+              }}>
+                {displayChars.map(char => (
+                  <CharacterCard
+                    key={char.id}
+                    character={char}
+                    charConditions={charConditions}
+                    groups={groups}
+                    conditions={conditions}
+                    phases={phases}
+                    turnsPerMinute={campaign.turns_per_minute}
+                    isCurrentTurn={char.id === currentTurnCharId}
+                    onApplyCondition={actions.applyCondition}
+                  />
+                ))}
+              </div>
+            )
+          })()}
         </main>
       </div>
 

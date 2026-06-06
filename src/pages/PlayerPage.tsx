@@ -63,9 +63,14 @@ export default function PlayerPage() {
       })),
   })).filter(g => g.items.length > 0)
 
+  const tacticalSorted = [...data.characters]
+    .filter(c => c.is_active && c.initiative_order !== null)
+    .sort((a, b) => (a.initiative_order ?? 0) - (b.initiative_order ?? 0))
   const tacticalChar = campaign.mode === 'tactical'
     ? data.characters.find(c => c.id === character.id)
     : null
+  const isMyTurn = campaign.mode === 'tactical' &&
+    tacticalSorted[campaign.current_initiative_index % Math.max(tacticalSorted.length, 1)]?.id === character.id
 
   return (
     <div style={{ minHeight: '100vh', maxWidth: '600px', margin: '0 auto', padding: '1.5rem 1rem' }}>
@@ -83,10 +88,25 @@ export default function PlayerPage() {
         )}
 
         {campaign.mode === 'tactical' && (
-          <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-            <span className="badge badge-active" style={{ fontSize: '0.8rem' }}>TACTICAL MODE</span>
+          <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.4rem' }}>
+            {isMyTurn ? (
+              <span style={{
+                display: 'inline-block',
+                padding: '0.35rem 1.25rem',
+                background: 'var(--accent-primary)',
+                color: 'var(--bg-primary)',
+                fontFamily: 'var(--font-display)',
+                fontSize: '1rem',
+                letterSpacing: '0.12em',
+                borderRadius: 'var(--radius)',
+              }}>
+                YOUR TURN
+              </span>
+            ) : (
+              <span className="badge" style={{ fontSize: '0.8rem' }}>TACTICAL MODE</span>
+            )}
             {tacticalChar?.initiative_order !== null && tacticalChar?.initiative_order !== undefined && (
-              <span style={{ color: 'var(--text-muted)', marginLeft: '0.75rem', fontSize: '0.85rem' }}>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
                 Initiative #{tacticalChar.initiative_order}
               </span>
             )}
