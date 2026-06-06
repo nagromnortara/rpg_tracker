@@ -117,7 +117,7 @@ export function useCampaignData(campaignId: string | undefined) {
         supabase.from('conditions').select('*').eq('campaign_id', campaignId).order('sort_order'),
         supabase.from('condition_phases').select('*').order('phase_order'),
         supabase.from('characters').select('*').eq('campaign_id', campaignId).order('created_at'),
-        supabase.from('character_conditions').select('*').order('applied_at'),
+        supabase.from('character_conditions').select('*').order('applied_turn'),
       ])
 
       if (cancelled) return

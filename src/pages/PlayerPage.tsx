@@ -2,8 +2,9 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useCampaignData } from '../hooks/useCampaignData'
-import { formatTime, formatDay } from '../lib/time'
-import type { Character } from '../lib/types'
+import { formatTime, formatDay, formatTurnTimestamp } from '../lib/time'
+import { formatRemaining, remainingUrgency } from '../lib/dice'
+import type { Character, DurationUnit } from '../lib/types'
 
 export default function PlayerPage() {
   const { campaignId, playerToken } = useParams<{ campaignId: string; playerToken: string }>()
@@ -74,8 +75,8 @@ export default function PlayerPage() {
 
         {campaign.mode === 'exploration' && (
           <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
-            <span style={{ fontSize: '1.3rem' }}>{formatTime(campaign.current_time_minutes)}</span>
-            <span style={{ color: 'var(--text-muted)', marginLeft: '0.75rem', fontSize: '0.9rem' }}>{formatDay(campaign.current_day)}</span>
+            <span style={{ fontSize: '1.3rem' }}>{formatTime(campaign.current_turn, campaign.turns_per_minute)}</span>
+            <span style={{ color: 'var(--text-muted)', marginLeft: '0.75rem', fontSize: '0.9rem' }}>{formatDay(campaign.current_turn, campaign.turns_per_minute)}</span>
           </div>
         )}
 
@@ -106,7 +107,17 @@ export default function PlayerPage() {
                 </h3>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
                   {items.map(({ cc, condition, phase }) => (
-                    <PlayerConditionCard key={cc.id} ccId={cc.id} conditionName={condition?.name ?? 'Unknown'} remainingTurns={cc.remaining_turns} phaseIndex={cc.current_phase} phaseText={phase?.effect_text ?? ''} sourceNote={cc.source_note} />
+                    <PlayerConditionCard
+                      key={cc.id}
+                      ccId={cc.id}
+                      conditionName={condition?.name ?? 'Unknown'}
+                      remainingTurns={cc.remaining_turns}
+                      durationUnit={phase?.duration_unit ?? 'turns'}
+                      turnsPerMinute={campaign.turns_per_minute}
+                      phaseIndex={cc.current_phase}
+                      phaseText={phase?.effect_text ?? ''}
+                      sourceNote={cc.source_note}
+                    />
                   ))}
                 </div>
               </div>
@@ -116,7 +127,17 @@ export default function PlayerPage() {
               const condition = conditions.find(c => c.id === cc.condition_id)
               const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
               return (
-                <PlayerConditionCard key={cc.id} ccId={cc.id} conditionName={condition?.name ?? 'Unknown'} remainingTurns={cc.remaining_turns} phaseIndex={cc.current_phase} phaseText={phase?.effect_text ?? ''} sourceNote={cc.source_note} />
+                <PlayerConditionCard
+                  key={cc.id}
+                  ccId={cc.id}
+                  conditionName={condition?.name ?? 'Unknown'}
+                  remainingTurns={cc.remaining_turns}
+                  durationUnit={phase?.duration_unit ?? 'turns'}
+                  turnsPerMinute={campaign.turns_per_minute}
+                  phaseIndex={cc.current_phase}
+                  phaseText={phase?.effect_text ?? ''}
+                  sourceNote={cc.source_note}
+                />
               )
             })
           )}
@@ -142,7 +163,7 @@ export default function PlayerPage() {
                     <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{condition?.name ?? 'Unknown'}</span>
                       <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {cc.expired_at ? new Date(cc.expired_at).toLocaleTimeString() : ''}
+                        {cc.expired_turn != null ? formatTurnTimestamp(cc.expired_turn, campaign.turns_per_minute) : ''}
                       </span>
                     </div>
                     {cc.source_note && <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '0.2rem 0 0', fontStyle: 'italic' }}>{cc.source_note}</p>}
@@ -157,16 +178,19 @@ export default function PlayerPage() {
   )
 }
 
-function PlayerConditionCard({ conditionName, remainingTurns, phaseIndex, phaseText, sourceNote }: {
+function PlayerConditionCard({ conditionName, remainingTurns, durationUnit, turnsPerMinute, phaseIndex, phaseText, sourceNote }: {
   ccId: string
   conditionName: string
   remainingTurns: number
+  durationUnit: DurationUnit
+  turnsPerMinute: number
   phaseIndex: number
   phaseText: string
   sourceNote: string | null
 }) {
-  const urgency = remainingTurns <= 1 ? 'danger' : remainingTurns <= 3 ? 'warning' : 'normal'
+  const urgency = remainingUrgency(remainingTurns, durationUnit, turnsPerMinute)
   const borderColor = urgency === 'danger' ? 'var(--text-danger)' : urgency === 'warning' ? '#c8a900' : 'var(--border-color)'
+  const displayRemaining = formatRemaining(remainingTurns, durationUnit, turnsPerMinute)
 
   return (
     <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-card)', border: `1px solid ${borderColor}`, borderRadius: 'var(--radius)' }}>
@@ -183,9 +207,8 @@ function PlayerConditionCard({ conditionName, remainingTurns, phaseIndex, phaseT
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
           <span style={{ color: borderColor, fontSize: '1.1rem', fontFamily: 'var(--font-body)' }}>
-            {remainingTurns}
+            {displayRemaining}
           </span>
-          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>turns</span>
         </div>
       </div>
       {phaseText && (

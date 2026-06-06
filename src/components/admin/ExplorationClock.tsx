@@ -30,10 +30,10 @@ export default function ExplorationClock({ campaign, onAdvanceTime }: Props) {
     <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
       <div style={{ textAlign: 'center' }}>
         <div style={{ fontFamily: 'var(--font-display)', fontSize: '2.5rem', color: 'var(--text-primary)', lineHeight: 1 }}>
-          {formatTime(campaign.current_time_minutes)}
+          {formatTime(campaign.current_turn, campaign.turns_per_minute)}
         </div>
         <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '0.25rem', letterSpacing: '0.08em' }}>
-          {formatDay(campaign.current_day)}
+          {formatDay(campaign.current_turn, campaign.turns_per_minute)}
         </div>
       </div>
 

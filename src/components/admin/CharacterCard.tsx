@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import ConditionBadge from './ConditionBadge'
 import ApplyConditionModal from './ApplyConditionModal'
+import { formatTurnTimestamp } from '../../lib/time'
 import type { Character, CharacterCondition, ConditionGroup, Condition, ConditionPhase } from '../../lib/types'
 
 interface Props {
@@ -87,8 +88,8 @@ export default function CharacterCard({ character, charConditions, groups, condi
               <div key={cc.id} style={{ color: 'var(--text-muted)', fontSize: '0.78rem', padding: '0.25rem 0', borderBottom: '1px solid var(--border-color)' }}>
                 <span style={{ color: 'var(--text-secondary)' }}>{cond?.name ?? 'Unknown'}</span>
                 {cc.source_note && <span style={{ fontStyle: 'italic' }}> — {cc.source_note}</span>}
-                {cc.expired_at && (
-                  <span style={{ float: 'right' }}>expired {new Date(cc.expired_at).toLocaleTimeString()}</span>
+                {cc.expired_turn != null && (
+                  <span style={{ float: 'right' }}>expired {formatTurnTimestamp(cc.expired_turn, turnsPerMinute)}</span>
                 )}
               </div>
             )

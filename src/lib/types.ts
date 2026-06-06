@@ -8,8 +8,7 @@ export interface Campaign {
   admin_token: string
   turns_per_minute: number
   mode: CampaignMode
-  current_day: number
-  current_time_minutes: number
+  current_turn: number
   current_initiative_index: number
   theme: string
   created_at: string
@@ -59,8 +58,8 @@ export interface CharacterCondition {
   remaining_turns: number
   is_active: boolean
   source_note: string | null
-  applied_at: string
-  expired_at: string | null
+  applied_turn: number
+  expired_turn: number | null
 }
 
 export interface CampaignData {
