@@ -14,6 +14,7 @@ export default function PlayerPage() {
   const [showLog, setShowLog] = useState(false)
 
   const data = useCampaignData(campaignId)
+  const isMobile = useIsMobile()
 
   useEffect(() => {
     if (!campaignId || !playerToken) return
@@ -45,7 +46,6 @@ export default function PlayerPage() {
     )
   }
 
-  const isMobile = useIsMobile()
   const { campaign, groups, conditions, phases, charConditions } = data
 
   const myActive = charConditions.filter(cc => cc.character_id === character.id && cc.is_active)
