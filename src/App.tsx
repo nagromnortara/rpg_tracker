@@ -2,8 +2,11 @@ import { Routes, Route } from 'react-router-dom'
 import HomePage from './pages/HomePage'
 import AdminPage from './pages/AdminPage'
 import PlayerPage from './pages/PlayerPage'
+import { useVersionCheck } from './hooks/useVersionCheck'
 
 export default function App() {
+  useVersionCheck()
+
   return (
     <div data-theme="fallout1945" style={{ minHeight: '100vh' }}>
       <Routes>
