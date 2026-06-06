@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useCampaignData } from '../hooks/useCampaignData'
+import { useIsMobile } from '../hooks/useIsMobile'
 import { formatTime, formatDay, formatTurnTimestamp } from '../lib/time'
 import { formatRemaining, remainingUrgency } from '../lib/dice'
 import type { Character, DurationUnit } from '../lib/types'
@@ -44,6 +45,7 @@ export default function PlayerPage() {
     )
   }
 
+  const isMobile = useIsMobile()
   const { campaign, groups, conditions, phases, charConditions } = data
 
   const myActive = charConditions.filter(cc => cc.character_id === character.id && cc.is_active)
@@ -73,10 +75,10 @@ export default function PlayerPage() {
     tacticalSorted[campaign.current_initiative_index % Math.max(tacticalSorted.length, 1)]?.id === character.id
 
   return (
-    <div style={{ minHeight: '100vh', maxWidth: '600px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+    <div style={{ minHeight: '100vh', maxWidth: '600px', margin: '0 auto', padding: isMobile ? '1rem 0.75rem' : '1.5rem 1rem' }}>
       {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
-        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--text-primary)', margin: '0 0 0.25rem' }}>
+      <div style={{ textAlign: 'center', marginBottom: isMobile ? '1.25rem' : '2rem' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? '1.6rem' : '2rem', color: 'var(--text-primary)', margin: '0 0 0.25rem' }}>
           {character.name}
         </h1>
 
@@ -139,6 +141,7 @@ export default function PlayerPage() {
                       phaseIndex={cc.current_phase}
                       phaseText={phase?.effect_text ?? ''}
                       sourceNote={cc.source_note}
+                      isMobile={isMobile}
                     />
                   ))}
                 </div>
@@ -159,6 +162,7 @@ export default function PlayerPage() {
                   phaseIndex={cc.current_phase}
                   phaseText={phase?.effect_text ?? ''}
                   sourceNote={cc.source_note}
+                  isMobile={isMobile}
                 />
               )
             })
@@ -182,9 +186,9 @@ export default function PlayerPage() {
                 const condition = conditions.find(c => c.id === cc.condition_id)
                 return (
                   <div key={cc.id} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', opacity: 0.6 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                       <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{condition?.name ?? 'Unknown'}</span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', whiteSpace: 'nowrap' }}>
                         {cc.expired_turn != null ? formatTurnTimestamp(cc.expired_turn, campaign.turns_per_minute) : ''}
                       </span>
                     </div>
@@ -200,7 +204,7 @@ export default function PlayerPage() {
   )
 }
 
-function PlayerConditionCard({ conditionName, remainingTurns, durationUnit, turnsPerMinute, phaseIndex, phaseText, sourceNote }: {
+function PlayerConditionCard({ conditionName, remainingTurns, durationUnit, turnsPerMinute, phaseIndex, phaseText, sourceNote, isMobile }: {
   ccId: string
   conditionName: string
   remainingTurns: number
@@ -209,36 +213,37 @@ function PlayerConditionCard({ conditionName, remainingTurns, durationUnit, turn
   phaseIndex: number
   phaseText: string
   sourceNote: string | null
+  isMobile: boolean
 }) {
   const urgency = remainingUrgency(remainingTurns, durationUnit, turnsPerMinute)
   const borderColor = urgency === 'danger' ? 'var(--text-danger)' : urgency === 'warning' ? '#c8a900' : 'var(--border-color)'
   const displayRemaining = formatRemaining(remainingTurns, durationUnit, turnsPerMinute)
 
   return (
-    <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-card)', border: `1px solid ${borderColor}`, borderRadius: 'var(--radius)' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
-        <div>
-          <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+    <div style={{ padding: isMobile ? '0.85rem 1rem' : '1rem 1.25rem', background: 'var(--bg-card)', border: `1px solid ${borderColor}`, borderRadius: 'var(--radius)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem', gap: '0.75rem' }}>
+        <div style={{ minWidth: 0 }}>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: isMobile ? '1rem' : '1.1rem', color: 'var(--text-primary)' }}>
             {conditionName}
           </span>
           {sourceNote && (
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '0.5rem', fontStyle: 'italic' }}>
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.78rem', marginLeft: '0.4rem', fontStyle: 'italic' }}>
               — {sourceNote}
             </span>
           )}
         </div>
-        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
-          <span style={{ color: borderColor, fontSize: '1.1rem', fontFamily: 'var(--font-body)' }}>
+        <div style={{ textAlign: 'right', flexShrink: 0 }}>
+          <span style={{ color: borderColor, fontSize: isMobile ? '1rem' : '1.1rem', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
             {displayRemaining}
           </span>
         </div>
       </div>
       {phaseText && (
-        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, lineHeight: 1.5 }}>
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
           {phaseText}
         </p>
       )}
-      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.05em', marginTop: '0.4rem', display: 'block' }}>
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.05em', marginTop: '0.35rem', display: 'block' }}>
         PHASE {phaseIndex + 1}
       </span>
     </div>
