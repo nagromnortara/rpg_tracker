@@ -68,7 +68,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
 
   const [upsertPhase] = useAction((params: {
     id?: string; condition_id: string; phase_order: number;
-    duration_type: string; duration_expression: string; effect_text: string
+    duration_type: string; duration_unit: string; duration_expression: string; effect_text: string
   }) =>
     call<string>('upsert_condition_phase', {
       p_admin_token: adminToken,
@@ -76,6 +76,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
       p_id: params.id ?? null,
       p_phase_order: params.phase_order,
       p_duration_type: params.duration_type,
+      p_duration_unit: params.duration_unit,
       p_duration_expression: params.duration_expression,
       p_effect_text: params.effect_text,
     })

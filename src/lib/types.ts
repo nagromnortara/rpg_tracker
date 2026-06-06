@@ -1,5 +1,6 @@
 export type CampaignMode = 'exploration' | 'tactical'
 export type DurationType = 'fixed' | 'dice'
+export type DurationUnit = 'turns' | 'minutes' | 'hours' | 'days'
 
 export interface Campaign {
   id: string
@@ -34,6 +35,7 @@ export interface ConditionPhase {
   condition_id: string
   phase_order: number
   duration_type: DurationType
+  duration_unit: DurationUnit
   duration_expression: string
   effect_text: string
 }
@@ -75,4 +77,5 @@ export interface PendingDiceRoll {
   conditionName: string
   phaseOrder: number
   diceExpression: string
+  durationUnit: DurationUnit
 }

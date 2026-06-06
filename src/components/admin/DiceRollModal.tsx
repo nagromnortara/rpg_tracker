@@ -34,7 +34,7 @@ export default function DiceRollModal({ rolls, onConfirm, onClose }: Props) {
           <div key={roll.characterConditionId}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
               <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{roll.conditionName}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Phase {roll.phaseOrder + 1} — {roll.diceExpression}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Phase {roll.phaseOrder + 1} — {roll.diceExpression} {roll.durationUnit}</span>
             </div>
             <input
               className="input"

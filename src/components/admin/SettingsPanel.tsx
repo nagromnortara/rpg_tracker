@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { formatDiceExpression } from '../../lib/dice'
 import type {
-  Campaign, ConditionGroup, Condition, ConditionPhase, Character,
+  Campaign, ConditionGroup, Condition, ConditionPhase, Character, DurationUnit,
 } from '../../lib/types'
 import type { useAdminActions } from '../../hooks/useAdminActions'
 
@@ -238,6 +238,7 @@ function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
       condition_id: cond.id,
       phase_order: phases.length,
       duration_type: 'fixed',
+      duration_unit: 'turns',
       duration_expression: '1',
       effect_text: '',
     })
@@ -296,6 +297,8 @@ function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
   )
 }
 
+const DURATION_UNITS: DurationUnit[] = ['turns', 'minutes', 'hours', 'days']
+
 function PhaseEditor({ phase, index, conditionId, actions }: {
   phase: ConditionPhase
   index: number
@@ -303,6 +306,7 @@ function PhaseEditor({ phase, index, conditionId, actions }: {
   actions: Actions
 }) {
   const [durationType, setDurationType] = useState(phase.duration_type)
+  const [durationUnit, setDurationUnit] = useState<DurationUnit>(phase.duration_unit)
   const [durationExpr, setDurationExpr] = useState(phase.duration_expression)
   const [effectText, setEffectText] = useState(phase.effect_text)
   const [dirty, setDirty] = useState(false)
@@ -317,6 +321,7 @@ function PhaseEditor({ phase, index, conditionId, actions }: {
       condition_id: conditionId,
       phase_order: index,
       duration_type: durationType,
+      duration_unit: durationUnit,
       duration_expression: durationExpr,
       effect_text: effectText,
     })
@@ -336,6 +341,7 @@ function PhaseEditor({ phase, index, conditionId, actions }: {
         </button>
       </div>
 
+      {/* Type + expression */}
       <div style={{ display: 'flex', gap: '0.4rem' }}>
         <button
           className={durationType === 'fixed' ? 'btn btn-primary' : 'btn btn-secondary'}
@@ -357,12 +363,26 @@ function PhaseEditor({ phase, index, conditionId, actions }: {
           onChange={e => markDirty(setDurationExpr)(e.target.value)}
           placeholder={durationType === 'dice' ? '1d6' : '3'}
           style={{ flex: 2, fontSize: '0.8rem' }}
-          title={durationType === 'dice' ? 'Dice expression e.g. 1d6, 2d4' : 'Number of turns'}
+          title={durationType === 'dice' ? 'Dice expression e.g. 1d6, 2d4' : 'Fixed number'}
         />
       </div>
 
+      {/* Unit selector */}
+      <div style={{ display: 'flex', gap: '0.3rem' }}>
+        {DURATION_UNITS.map(u => (
+          <button
+            key={u}
+            className={durationUnit === u ? 'btn btn-primary' : 'btn btn-secondary'}
+            style={{ flex: 1, fontSize: '0.7rem', padding: '0.2rem 0' }}
+            onClick={() => markDirty(setDurationUnit)(u)}
+          >
+            {u}
+          </button>
+        ))}
+      </div>
+
       <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: '0.1rem' }}>
-        {formatDiceExpression(durationExpr)}
+        {formatDiceExpression(durationExpr, durationUnit)}
       </div>
 
       <textarea

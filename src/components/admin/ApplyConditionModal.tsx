@@ -115,7 +115,7 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
         {firstPhase && (
           <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}>
             <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem', letterSpacing: '0.05em' }}>
-              PHASE 1 — {formatDiceExpression(firstPhase.duration_expression)}
+              PHASE 1 — {formatDiceExpression(firstPhase.duration_expression, firstPhase.duration_unit)}
             </div>
             {firstPhase.effect_text && (
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>{firstPhase.effect_text}</p>
@@ -127,7 +127,7 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
         {needsDiceRoll && firstPhase && (
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.35rem', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
-              ROLL {firstPhase.duration_expression.toUpperCase()} — ENTER RESULT
+              ROLL {firstPhase.duration_expression.toUpperCase()} {firstPhase.duration_unit.toUpperCase()} — ENTER RESULT
             </label>
             <input
               className="input"
@@ -144,7 +144,7 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
 
         {!needsDiceRoll && firstPhase && isDiceExpression(firstPhase.duration_expression) === false && (
           <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', margin: 0 }}>
-            Duration: {firstPhase.duration_expression} turn{parseInt(firstPhase.duration_expression) !== 1 ? 's' : ''}
+            Duration: {formatDiceExpression(firstPhase.duration_expression, firstPhase.duration_unit)}
           </p>
         )}
 
