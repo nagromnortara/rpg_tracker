@@ -20,7 +20,9 @@ export default function CharacterCard({ character, charConditions, groups, condi
   const [showLog, setShowLog] = useState(false)
 
   const activeConditions = charConditions.filter(cc => cc.character_id === character.id && cc.is_active)
-  const expiredConditions = charConditions.filter(cc => cc.character_id === character.id && !cc.is_active)
+  const expiredConditions = charConditions
+    .filter(cc => cc.character_id === character.id && !cc.is_active)
+    .sort((a, b) => (b.expired_turn ?? 0) - (a.expired_turn ?? 0))
 
   return (
     <div

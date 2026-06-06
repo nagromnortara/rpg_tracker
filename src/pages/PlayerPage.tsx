@@ -47,7 +47,9 @@ export default function PlayerPage() {
   const { campaign, groups, conditions, phases, charConditions } = data
 
   const myActive = charConditions.filter(cc => cc.character_id === character.id && cc.is_active)
-  const myExpired = charConditions.filter(cc => cc.character_id === character.id && !cc.is_active)
+  const myExpired = charConditions
+    .filter(cc => cc.character_id === character.id && !cc.is_active)
+    .sort((a, b) => (b.expired_turn ?? 0) - (a.expired_turn ?? 0))
 
   // Group active conditions by their group
   const groupedConditions = groups.map(g => ({
