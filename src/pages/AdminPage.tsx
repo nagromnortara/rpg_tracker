@@ -150,6 +150,7 @@ export default function AdminPage() {
                       groups={groups}
                       conditions={conditions}
                       phases={phases}
+                      turnsPerMinute={campaign.turns_per_minute}
                       onApplyCondition={actions.applyCondition}
                     />
                   ))}

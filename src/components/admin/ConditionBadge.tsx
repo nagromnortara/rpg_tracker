@@ -1,25 +1,16 @@
-import { unitAbbr } from '../../lib/dice'
-import type { CharacterCondition, Condition, ConditionPhase, DurationUnit } from '../../lib/types'
+import { formatRemaining, remainingUrgency } from '../../lib/dice'
+import type { CharacterCondition, Condition, ConditionPhase } from '../../lib/types'
 
 interface Props {
   cc: CharacterCondition
   condition: Condition | undefined
   phase: ConditionPhase | undefined
+  turnsPerMinute: number
 }
 
-function getUrgency(remaining: number, unit: DurationUnit): 'danger' | 'warning' | 'normal' {
-  switch (unit) {
-    case 'turns':   return remaining <= 1 ? 'danger' : remaining <= 3 ? 'warning' : 'normal'
-    case 'minutes': return remaining <= 10 ? 'danger' : remaining <= 60 ? 'warning' : 'normal'
-    case 'hours':   return remaining <= 1 ? 'danger' : remaining <= 4 ? 'warning' : 'normal'
-    case 'days':    return remaining <= 1 ? 'danger' : remaining <= 3 ? 'warning' : 'normal'
-  }
-}
-
-export default function ConditionBadge({ cc, condition, phase }: Props) {
+export default function ConditionBadge({ cc, condition, phase, turnsPerMinute }: Props) {
   const unit = phase?.duration_unit ?? 'turns'
-  const turns = cc.remaining_turns
-  const urgency = getUrgency(turns, unit)
+  const urgency = remainingUrgency(cc.remaining_turns, unit, turnsPerMinute)
 
   const borderColor = urgency === 'danger' ? 'var(--text-danger)'
     : urgency === 'warning' ? '#c8a900'
@@ -45,7 +36,7 @@ export default function ConditionBadge({ cc, condition, phase }: Props) {
           fontFamily: 'var(--font-body)',
           flexShrink: 0,
         }}>
-          {turns}{unitAbbr(unit)}
+          {formatRemaining(cc.remaining_turns, unit, turnsPerMinute)}
         </span>
       </div>
       {cc.source_note && (

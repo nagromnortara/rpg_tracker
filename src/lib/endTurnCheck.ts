@@ -7,11 +7,7 @@ export function computePendingDiceRolls(
   phases: ConditionPhase[]
 ): PendingDiceRoll[] {
   return charConditions
-    .filter(cc => {
-      if (!(cc.character_id === characterId && cc.is_active && cc.remaining_turns === 1)) return false
-      const curPhase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
-      return !curPhase || curPhase.duration_unit === 'turns'
-    })
+    .filter(cc => cc.character_id === characterId && cc.is_active && cc.remaining_turns === 1)
     .flatMap(cc => {
       const nextPhase = phases.find(
         p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase + 1

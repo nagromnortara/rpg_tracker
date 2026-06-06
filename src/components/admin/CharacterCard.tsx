@@ -9,11 +9,12 @@ interface Props {
   groups: ConditionGroup[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  turnsPerMinute: number
   isCurrentTurn?: boolean
   onApplyCondition: (params: { character_id: string; condition_id: string; first_phase_turns: number; source_note?: string }) => Promise<unknown>
 }
 
-export default function CharacterCard({ character, charConditions, groups, conditions, phases, isCurrentTurn, onApplyCondition }: Props) {
+export default function CharacterCard({ character, charConditions, groups, conditions, phases, turnsPerMinute, isCurrentTurn, onApplyCondition }: Props) {
   const [showApply, setShowApply] = useState(false)
   const [showLog, setShowLog] = useState(false)
 
@@ -52,7 +53,7 @@ export default function CharacterCard({ character, charConditions, groups, condi
         {activeConditions.map(cc => {
           const cond = conditions.find(c => c.id === cc.condition_id)
           const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
-          return <ConditionBadge key={cc.id} cc={cc} condition={cond} phase={phase} />
+          return <ConditionBadge key={cc.id} cc={cc} condition={cond} phase={phase} turnsPerMinute={turnsPerMinute} />
         })}
       </div>
 
@@ -101,6 +102,7 @@ export default function CharacterCard({ character, charConditions, groups, condi
           groups={groups}
           conditions={conditions}
           phases={phases}
+          turnsPerMinute={turnsPerMinute}
           onApply={onApplyCondition}
           onClose={() => setShowApply(false)}
         />

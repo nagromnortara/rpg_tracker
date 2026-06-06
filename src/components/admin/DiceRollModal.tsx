@@ -1,14 +1,16 @@
 import { useState } from 'react'
 import Modal from '../ui/Modal'
+import { toTurns } from '../../lib/dice'
 import type { PendingDiceRoll } from '../../lib/types'
 
 interface Props {
   rolls: PendingDiceRoll[]
+  turnsPerMinute: number
   onConfirm: (results: { character_condition_id: string; rolled_turns: number }[]) => void
   onClose: () => void
 }
 
-export default function DiceRollModal({ rolls, onConfirm, onClose }: Props) {
+export default function DiceRollModal({ rolls, turnsPerMinute, onConfirm, onClose }: Props) {
   const [values, setValues] = useState<Record<string, string>>(
     Object.fromEntries(rolls.map(r => [r.characterConditionId, '']))
   )
@@ -17,7 +19,7 @@ export default function DiceRollModal({ rolls, onConfirm, onClose }: Props) {
     e.preventDefault()
     const results = rolls.map(r => ({
       character_condition_id: r.characterConditionId,
-      rolled_turns: parseInt(values[r.characterConditionId]) || 1,
+      rolled_turns: toTurns(parseInt(values[r.characterConditionId]) || 1, r.durationUnit, turnsPerMinute),
     }))
     onConfirm(results)
   }
@@ -28,19 +30,21 @@ export default function DiceRollModal({ rolls, onConfirm, onClose }: Props) {
     <Modal title="Phase Transition — Roll Required" onClose={onClose}>
       <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
         <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          The following conditions are advancing to a new phase. Enter the rolled duration for each.
+          The following conditions are advancing to a new phase. Roll and enter the result.
         </p>
         {rolls.map(roll => (
           <div key={roll.characterConditionId}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
               <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{roll.conditionName}</span>
-              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>Phase {roll.phaseOrder + 1} — {roll.diceExpression} {roll.durationUnit}</span>
+              <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
+                Phase {roll.phaseOrder + 1} — {roll.diceExpression} {roll.durationUnit}
+              </span>
             </div>
             <input
               className="input"
               type="number"
               min={1}
-              placeholder={`Roll ${roll.diceExpression}`}
+              placeholder={`# of ${roll.durationUnit}`}
               value={values[roll.characterConditionId]}
               onChange={e => setValues(v => ({ ...v, [roll.characterConditionId]: e.target.value }))}
               required

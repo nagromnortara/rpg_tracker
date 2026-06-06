@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import Modal from '../ui/Modal'
-import { formatDiceExpression, isDiceExpression } from '../../lib/dice'
+import { formatDiceExpression, isDiceExpression, toTurns } from '../../lib/dice'
 import type { Character, ConditionGroup, Condition, ConditionPhase } from '../../lib/types'
 
 interface Props {
@@ -8,11 +8,12 @@ interface Props {
   groups: ConditionGroup[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  turnsPerMinute: number
   onApply: (params: { character_id: string; condition_id: string; first_phase_turns: number; source_note?: string }) => Promise<unknown>
   onClose: () => void
 }
 
-export default function ApplyConditionModal({ character, groups, conditions, phases, onApply, onClose }: Props) {
+export default function ApplyConditionModal({ character, groups, conditions, phases, turnsPerMinute, onApply, onClose }: Props) {
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id ?? '')
   const [selectedConditionId, setSelectedConditionId] = useState<string>('')
   const [rolledTurns, setRolledTurns] = useState('')
@@ -30,9 +31,12 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
 
   function computeFirstPhaseTurns(): number | null {
     if (!firstPhase) return null
-    if (firstPhase.duration_type === 'fixed') return parseInt(firstPhase.duration_expression)
+    if (firstPhase.duration_type === 'fixed') {
+      const raw = parseInt(firstPhase.duration_expression)
+      return isNaN(raw) ? null : toTurns(raw, firstPhase.duration_unit, turnsPerMinute)
+    }
     const val = parseInt(rolledTurns)
-    return val > 0 ? val : null
+    return val > 0 ? toTurns(val, firstPhase.duration_unit, turnsPerMinute) : null
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -127,13 +131,13 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
         {needsDiceRoll && firstPhase && (
           <div>
             <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.35rem', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
-              ROLL {firstPhase.duration_expression.toUpperCase()} {firstPhase.duration_unit.toUpperCase()} — ENTER RESULT
+              ROLL {firstPhase.duration_expression.toUpperCase()} — ENTER {firstPhase.duration_unit.toUpperCase()}
             </label>
             <input
               className="input"
               type="number"
               min={1}
-              placeholder={`Result of ${firstPhase.duration_expression}`}
+              placeholder={`# of ${firstPhase.duration_unit}`}
               value={rolledTurns}
               onChange={e => setRolledTurns(e.target.value)}
               required={needsDiceRoll}

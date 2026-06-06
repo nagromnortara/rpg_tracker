@@ -86,6 +86,7 @@ export default function TacticalTracker({
               groups={groups}
               conditions={conditions}
               phases={phases}
+              turnsPerMinute={campaign.turns_per_minute}
               isCurrentTurn={char.id === currentChar?.id}
               onApplyCondition={onApplyCondition}
             />
@@ -96,6 +97,7 @@ export default function TacticalTracker({
       {pendingRolls && pendingCharId && (
         <DiceRollModal
           rolls={pendingRolls}
+          turnsPerMinute={campaign.turns_per_minute}
           onConfirm={results => doEndTurn(pendingCharId, results)}
           onClose={() => { setPendingRolls(null); setPendingCharId(null) }}
         />
