@@ -12,7 +12,8 @@
       "Bash(git diff)",
       "Bash(git diff *)",
       "Bash(git log)",
-      "Bash(git log *)"
+      "Bash(git log *)",
+      "mcp__supabase__execute_sql"
     ]
   }
 }
