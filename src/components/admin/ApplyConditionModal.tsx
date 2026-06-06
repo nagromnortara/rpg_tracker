@@ -115,17 +115,33 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
           </p>
         )}
 
-        {/* First phase info */}
-        {firstPhase && (
-          <div style={{ padding: '0.75rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)' }}>
-            <div style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginBottom: '0.35rem', letterSpacing: '0.05em' }}>
-              PHASE 1 — {formatDiceExpression(firstPhase.duration_expression, firstPhase.duration_unit)}
+        {/* All phases preview */}
+        {selectedCondition && (() => {
+          const condPhases = phases
+            .filter(p => p.condition_id === selectedCondition.id)
+            .sort((a, b) => a.phase_order - b.phase_order)
+          if (condPhases.length === 0) return null
+          return (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {condPhases.map((phase, i) => (
+                <div key={phase.id} style={{
+                  padding: '0.6rem 0.75rem',
+                  background: 'var(--bg-secondary)',
+                  border: `1px solid ${i === 0 ? 'var(--accent-primary)' : 'var(--border-color)'}`,
+                  borderRadius: 'var(--radius)',
+                  opacity: i === 0 ? 1 : 0.7,
+                }}>
+                  <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginBottom: phase.effect_text ? '0.3rem' : 0, letterSpacing: '0.05em' }}>
+                    PHASE {i + 1} — {formatDiceExpression(phase.duration_expression, phase.duration_unit)}
+                  </div>
+                  {phase.effect_text && (
+                    <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>{phase.effect_text}</p>
+                  )}
+                </div>
+              ))}
             </div>
-            {firstPhase.effect_text && (
-              <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', margin: 0 }}>{firstPhase.effect_text}</p>
-            )}
-          </div>
-        )}
+          )
+        })()}
 
         {/* Dice roll input */}
         {needsDiceRoll && firstPhase && (
