@@ -62,6 +62,7 @@ export default function CharacterCard({ character, charConditions, groups, condi
           style={{ fontSize: '0.8rem', padding: '0.3rem 0.75rem' }}
           onClick={() => setShowApply(true)}
           disabled={groups.length === 0}
+          title={groups.length === 0 ? 'Add condition groups in Settings first' : undefined}
         >
           + Condition
         </button>

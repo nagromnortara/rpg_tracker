@@ -10,8 +10,8 @@ import SettingsPanel from '../components/admin/SettingsPanel'
 
 export default function AdminPage() {
   const { campaignId, adminToken } = useParams<{ campaignId: string; adminToken: string }>()
-  const data = useCampaignData(campaignId)
-  const actions = useAdminActions(campaignId!, adminToken!)
+  const { refetch, ...data } = useCampaignData(campaignId)
+  const actions = useAdminActions(campaignId!, adminToken!, refetch)
 
   const [showSettings, setShowSettings] = useState(false)
   const [showInitiative, setShowInitiative] = useState(false)

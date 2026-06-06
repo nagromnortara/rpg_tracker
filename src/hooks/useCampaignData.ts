@@ -1,4 +1,4 @@
-import { useEffect, useReducer, useRef } from 'react'
+import { useEffect, useReducer, useRef, useState, useCallback } from 'react'
 import { supabase } from '../lib/supabase'
 import type {
   Campaign, ConditionGroup, Condition, ConditionPhase,
@@ -84,15 +84,26 @@ function reducer(state: State, action: Action): State {
 
 export function useCampaignData(campaignId: string | undefined) {
   const [state, dispatch] = useReducer(reducer, initial)
+  const [loadTick, setLoadTick] = useState(0)
   const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null)
+  const isFirstLoadRef = useRef(true)
 
+  // Reset first-load flag whenever campaignId changes
+  useEffect(() => {
+    isFirstLoadRef.current = true
+  }, [campaignId])
+
+  // Data fetching — re-runs on refetch (loadTick increment)
   useEffect(() => {
     if (!campaignId) return
 
     let cancelled = false
 
     async function load() {
-      dispatch({ type: 'SET_LOADING', payload: true })
+      if (isFirstLoadRef.current) {
+        dispatch({ type: 'SET_LOADING', payload: true })
+      }
+
       const [
         { data: campaign, error: e1 },
         { data: groups },
@@ -112,10 +123,10 @@ export function useCampaignData(campaignId: string | undefined) {
       if (cancelled) return
       if (e1) { dispatch({ type: 'SET_ERROR', payload: e1.message }); return }
 
-      // Filter phases and charConditions to only those belonging to this campaign
       const conditionIds = new Set((conditions ?? []).map(c => c.id))
       const characterIds = new Set((characters ?? []).map(c => c.id))
 
+      isFirstLoadRef.current = false
       dispatch({
         type: 'INITIAL_LOAD',
         payload: {
@@ -131,7 +142,13 @@ export function useCampaignData(campaignId: string | undefined) {
 
     load()
 
-    // Realtime subscriptions
+    return () => { cancelled = true }
+  }, [campaignId, loadTick])
+
+  // Realtime subscriptions — only reconnect when campaignId changes
+  useEffect(() => {
+    if (!campaignId) return
+
     const channel = supabase.channel(`campaign:${campaignId}`)
 
     channel
@@ -169,10 +186,13 @@ export function useCampaignData(campaignId: string | undefined) {
     channelRef.current = channel
 
     return () => {
-      cancelled = true
       channel.unsubscribe()
     }
   }, [campaignId])
 
-  return state
+  const refetch = useCallback(() => {
+    setLoadTick(t => t + 1)
+  }, [])
+
+  return { ...state, refetch }
 }
