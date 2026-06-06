@@ -208,7 +208,7 @@ function ErrorScreen({ message }: { message: string }) {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
       <p style={{ color: 'var(--text-danger)' }}>{message}</p>
-      <a href="/rpg_tracker/" style={{ color: 'var(--text-secondary)' }}>Return home</a>
+      <a href={import.meta.env.BASE_URL} style={{ color: 'var(--text-secondary)' }}>Return home</a>
     </div>
   )
 }

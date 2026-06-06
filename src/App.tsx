@@ -21,7 +21,7 @@ function NotFound() {
     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', gap: '1rem' }}>
       <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--text-primary)' }}>404</h1>
       <p style={{ color: 'var(--text-muted)' }}>This page does not exist.</p>
-      <a href="/rpg_tracker/" style={{ color: 'var(--accent-secondary)' }}>Return home</a>
+      <a href={import.meta.env.BASE_URL} style={{ color: 'var(--accent-secondary)' }}>Return home</a>
     </div>
   )
 }

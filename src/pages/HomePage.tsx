@@ -36,7 +36,7 @@ export default function HomePage() {
   }
 
   const adminUrl = created
-    ? `${window.location.origin}/rpg_tracker/campaign/${created.id}/admin/${created.adminToken}`
+    ? `${window.location.origin}${import.meta.env.BASE_URL}campaign/${created.id}/admin/${created.adminToken}`
     : ''
 
   return (

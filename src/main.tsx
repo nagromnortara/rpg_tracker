@@ -8,7 +8,7 @@ document.documentElement.setAttribute('data-theme', 'fallout1945')
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <BrowserRouter basename="/rpg_tracker">
+    <BrowserRouter basename={import.meta.env.BASE_URL}>
       <App />
     </BrowserRouter>
   </StrictMode>
