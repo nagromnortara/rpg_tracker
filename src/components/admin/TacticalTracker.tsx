@@ -17,6 +17,7 @@ export default function TacticalTracker({ campaign, characters, charConditions, 
   const [pendingRolls, setPendingRolls] = useState<PendingDiceRoll[] | null>(null)
   const [pendingCharId, setPendingCharId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
+  const [endTurnError, setEndTurnError] = useState<string | null>(null)
 
   const sorted = [...characters]
     .filter(c => c.is_active && c.initiative_order !== null)
@@ -26,6 +27,7 @@ export default function TacticalTracker({ campaign, characters, charConditions, 
 
   function handleEndTurnClick() {
     if (!currentChar) return
+    setEndTurnError(null)
     const rolls = computePendingDiceRolls(currentChar.id, charConditions, conditions, phases)
     if (rolls.length > 0) {
       setPendingRolls(rolls)
@@ -37,8 +39,11 @@ export default function TacticalTracker({ campaign, characters, charConditions, 
 
   async function doEndTurn(charId: string, rolls: { character_condition_id: string; rolled_turns: number }[]) {
     setSaving(true)
+    setEndTurnError(null)
     try {
       await onEndTurn(charId, rolls)
+    } catch (e) {
+      setEndTurnError(e instanceof Error ? e.message : 'Failed to advance turn')
     } finally {
       setSaving(false)
       setPendingRolls(null)
@@ -69,8 +74,13 @@ export default function TacticalTracker({ campaign, characters, charConditions, 
           disabled={saving || !currentChar}
           style={{ padding: '0.6rem', letterSpacing: '0.08em', fontFamily: 'var(--font-body)' }}
         >
-          {saving ? 'Processing...' : 'END TURN'}
+          {saving ? 'Processing...' : 'Move to next'}
         </button>
+        {endTurnError && (
+          <p style={{ color: 'var(--text-danger)', fontSize: '0.8rem', margin: 0, textAlign: 'center' }}>
+            {endTurnError}
+          </p>
+        )}
 
         <hr className="divider" />
 
