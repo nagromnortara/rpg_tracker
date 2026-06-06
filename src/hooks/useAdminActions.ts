@@ -119,7 +119,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
   const [switchToTactical] = useAction((assignments: { character_id: string; initiative_order: number }[]) =>
     call('switch_to_tactical', {
       p_campaign_id: campaignId, p_admin_token: adminToken,
-      p_assignments: JSON.stringify(assignments),
+      p_assignments: assignments,
     })
   )
 
