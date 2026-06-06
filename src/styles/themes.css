@@ -1,0 +1,156 @@
+@import "tailwindcss";
+
+/* ---- FALLOUT 1945 THEME ---- */
+[data-theme="fallout1945"] {
+  --bg-primary: #0d0a06;
+  --bg-secondary: #1a1208;
+  --bg-card: #221a0e;
+  --bg-card-hover: #2e2415;
+  --bg-input: #160f07;
+  --bg-modal: #1e1609;
+  --text-primary: #c8a96e;
+  --text-secondary: #a07840;
+  --text-muted: #5c4a28;
+  --text-danger: #c0392b;
+  --accent-primary: #8b2020;
+  --accent-hover: #a52828;
+  --accent-secondary: #c0392b;
+  --border-color: #3d2e14;
+  --border-focus: #8b2020;
+  --shadow-card: 0 2px 16px rgba(0, 0, 0, 0.8);
+  --shadow-modal: 0 8px 32px rgba(0, 0, 0, 0.9);
+  --font-display: 'IM Fell English', serif;
+  --font-body: 'Share Tech Mono', monospace;
+  --radius: 2px;
+}
+
+/* Base reset */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  min-height: 100vh;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--bg-primary); }
+::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+/* Typography */
+.font-display { font-family: var(--font-display); }
+.font-body { font-family: var(--font-body); }
+
+/* Card */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-card);
+}
+
+/* Input */
+.input {
+  background: var(--bg-input);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-family: var(--font-body);
+  padding: 0.4rem 0.75rem;
+  width: 100%;
+  outline: none;
+  transition: border-color 0.15s;
+}
+.input:focus { border-color: var(--border-focus); }
+.input::placeholder { color: var(--text-muted); }
+
+/* Button variants */
+.btn {
+  border-radius: var(--radius);
+  font-family: var(--font-body);
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  border: none;
+  padding: 0.45rem 1rem;
+  letter-spacing: 0.05em;
+}
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.btn-primary {
+  background: var(--accent-primary);
+  color: var(--text-primary);
+  border: 1px solid var(--accent-hover);
+}
+.btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+.btn-secondary {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-color);
+}
+.btn-secondary:hover:not(:disabled) { background: var(--bg-card-hover); color: var(--text-primary); }
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid transparent;
+}
+.btn-ghost:hover:not(:disabled) { color: var(--text-secondary); border-color: var(--border-color); }
+.btn-danger {
+  background: transparent;
+  color: var(--text-danger);
+  border: 1px solid var(--text-danger);
+}
+.btn-danger:hover:not(:disabled) { background: rgba(192,57,43,0.15); }
+
+/* Badge */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.15rem 0.5rem;
+  border-radius: var(--radius);
+  font-size: 0.75rem;
+  border: 1px solid var(--border-color);
+  background: var(--bg-secondary);
+  color: var(--text-secondary);
+}
+.badge-warning { border-color: #c8a900; color: #c8a900; }
+.badge-danger { border-color: var(--text-danger); color: var(--text-danger); }
+.badge-active { border-color: var(--accent-primary); color: var(--text-primary); background: rgba(139,32,32,0.2); }
+
+/* Modal overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 1rem;
+}
+.modal-box {
+  background: var(--bg-modal);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-modal);
+  max-height: 90vh;
+  overflow-y: auto;
+  width: 100%;
+  max-width: 520px;
+}
+
+/* Section divider */
+.divider {
+  border: none;
+  border-top: 1px solid var(--border-color);
+  margin: 1rem 0;
+}
+
+/* Glow on active turn */
+.turn-active {
+  box-shadow: 0 0 0 2px var(--accent-primary), 0 0 12px rgba(139,32,32,0.4);
+}

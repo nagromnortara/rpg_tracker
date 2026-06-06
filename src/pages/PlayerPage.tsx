@@ -1,0 +1,201 @@
+import { useState, useEffect } from 'react'
+import { useParams } from 'react-router-dom'
+import { supabase } from '../lib/supabase'
+import { useCampaignData } from '../hooks/useCampaignData'
+import { formatTime, formatDay } from '../lib/time'
+import type { Character } from '../lib/types'
+
+export default function PlayerPage() {
+  const { campaignId, playerToken } = useParams<{ campaignId: string; playerToken: string }>()
+  const [character, setCharacter] = useState<Character | null>(null)
+  const [charError, setCharError] = useState<string | null>(null)
+  const [showLog, setShowLog] = useState(false)
+
+  const data = useCampaignData(campaignId)
+
+  useEffect(() => {
+    if (!campaignId || !playerToken) return
+    supabase
+      .from('characters')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('player_token', playerToken)
+      .single()
+      .then(({ data, error }) => {
+        if (error || !data) setCharError('Character not found.')
+        else setCharacter(data as Character)
+      })
+  }, [campaignId, playerToken])
+
+  if (data.loading || (!character && !charError)) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <p style={{ color: 'var(--text-muted)', letterSpacing: '0.1em' }}>LOADING...</p>
+      </div>
+    )
+  }
+
+  if (charError || !character || !data.campaign) {
+    return (
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '1rem' }}>
+        <p style={{ color: 'var(--text-danger)' }}>{charError ?? 'Campaign not found.'}</p>
+      </div>
+    )
+  }
+
+  const { campaign, groups, conditions, phases, charConditions } = data
+
+  const myActive = charConditions.filter(cc => cc.character_id === character.id && cc.is_active)
+  const myExpired = charConditions.filter(cc => cc.character_id === character.id && !cc.is_active)
+
+  // Group active conditions by their group
+  const groupedConditions = groups.map(g => ({
+    group: g,
+    items: myActive
+      .filter(cc => conditions.find(c => c.id === cc.condition_id)?.group_id === g.id)
+      .map(cc => ({
+        cc,
+        condition: conditions.find(c => c.id === cc.condition_id),
+        phase: phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase),
+      })),
+  })).filter(g => g.items.length > 0)
+
+  const tacticalChar = campaign.mode === 'tactical'
+    ? data.characters.find(c => c.id === character.id)
+    : null
+
+  return (
+    <div style={{ minHeight: '100vh', maxWidth: '600px', margin: '0 auto', padding: '1.5rem 1rem' }}>
+      {/* Header */}
+      <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
+        <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '2rem', color: 'var(--text-primary)', margin: '0 0 0.25rem' }}>
+          {character.name}
+        </h1>
+
+        {campaign.mode === 'exploration' && (
+          <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
+            <span style={{ fontSize: '1.3rem' }}>{formatTime(campaign.current_time_minutes)}</span>
+            <span style={{ color: 'var(--text-muted)', marginLeft: '0.75rem', fontSize: '0.9rem' }}>{formatDay(campaign.current_day)}</span>
+          </div>
+        )}
+
+        {campaign.mode === 'tactical' && (
+          <div style={{ color: 'var(--text-secondary)', fontFamily: 'var(--font-body)' }}>
+            <span className="badge badge-active" style={{ fontSize: '0.8rem' }}>TACTICAL MODE</span>
+            {tacticalChar?.initiative_order !== null && tacticalChar?.initiative_order !== undefined && (
+              <span style={{ color: 'var(--text-muted)', marginLeft: '0.75rem', fontSize: '0.85rem' }}>
+                Initiative #{tacticalChar.initiative_order}
+              </span>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* Active conditions */}
+      {myActive.length === 0 ? (
+        <div className="card" style={{ padding: '2rem', textAlign: 'center', color: 'var(--text-muted)' }}>
+          No active conditions
+        </div>
+      ) : (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
+          {groupedConditions.length > 0 ? (
+            groupedConditions.map(({ group, items }) => (
+              <div key={group.id}>
+                <h3 style={{ margin: '0 0 0.6rem', color: 'var(--text-muted)', fontSize: '0.75rem', letterSpacing: '0.1em' }}>
+                  {group.name.toUpperCase()}
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+                  {items.map(({ cc, condition, phase }) => (
+                    <PlayerConditionCard key={cc.id} ccId={cc.id} conditionName={condition?.name ?? 'Unknown'} remainingTurns={cc.remaining_turns} phaseIndex={cc.current_phase} phaseText={phase?.effect_text ?? ''} sourceNote={cc.source_note} />
+                  ))}
+                </div>
+              </div>
+            ))
+          ) : (
+            myActive.map(cc => {
+              const condition = conditions.find(c => c.id === cc.condition_id)
+              const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
+              return (
+                <PlayerConditionCard key={cc.id} ccId={cc.id} conditionName={condition?.name ?? 'Unknown'} remainingTurns={cc.remaining_turns} phaseIndex={cc.current_phase} phaseText={phase?.effect_text ?? ''} sourceNote={cc.source_note} />
+              )
+            })
+          )}
+        </div>
+      )}
+
+      {/* Expired log */}
+      {myExpired.length > 0 && (
+        <div style={{ marginTop: '2rem' }}>
+          <button
+            className="btn btn-ghost"
+            onClick={() => setShowLog(v => !v)}
+            style={{ fontSize: '0.8rem', width: '100%', padding: '0.5rem' }}
+          >
+            {showLog ? 'Hide' : 'Show'} Condition History ({myExpired.length})
+          </button>
+          {showLog && (
+            <div style={{ marginTop: '0.75rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+              {myExpired.map(cc => {
+                const condition = conditions.find(c => c.id === cc.condition_id)
+                return (
+                  <div key={cc.id} style={{ padding: '0.5rem 0.75rem', background: 'var(--bg-secondary)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', opacity: 0.6 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                      <span style={{ color: 'var(--text-secondary)', fontSize: '0.85rem' }}>{condition?.name ?? 'Unknown'}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                        {cc.expired_at ? new Date(cc.expired_at).toLocaleTimeString() : ''}
+                      </span>
+                    </div>
+                    {cc.source_note && <p style={{ color: 'var(--text-muted)', fontSize: '0.78rem', margin: '0.2rem 0 0', fontStyle: 'italic' }}>{cc.source_note}</p>}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PlayerConditionCard({ conditionName, remainingTurns, phaseIndex, phaseText, sourceNote }: {
+  ccId: string
+  conditionName: string
+  remainingTurns: number
+  phaseIndex: number
+  phaseText: string
+  sourceNote: string | null
+}) {
+  const urgency = remainingTurns <= 1 ? 'danger' : remainingTurns <= 3 ? 'warning' : 'normal'
+  const borderColor = urgency === 'danger' ? 'var(--text-danger)' : urgency === 'warning' ? '#c8a900' : 'var(--border-color)'
+
+  return (
+    <div style={{ padding: '1rem 1.25rem', background: 'var(--bg-card)', border: `1px solid ${borderColor}`, borderRadius: 'var(--radius)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.4rem' }}>
+        <div>
+          <span style={{ fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-primary)' }}>
+            {conditionName}
+          </span>
+          {sourceNote && (
+            <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginLeft: '0.5rem', fontStyle: 'italic' }}>
+              — {sourceNote}
+            </span>
+          )}
+        </div>
+        <div style={{ textAlign: 'right', flexShrink: 0, marginLeft: '1rem' }}>
+          <span style={{ color: borderColor, fontSize: '1.1rem', fontFamily: 'var(--font-body)' }}>
+            {remainingTurns}
+          </span>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', display: 'block' }}>turns</span>
+        </div>
+      </div>
+      {phaseText && (
+        <p style={{ color: 'var(--text-secondary)', fontSize: '0.95rem', margin: 0, lineHeight: 1.5 }}>
+          {phaseText}
+        </p>
+      )}
+      <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.05em', marginTop: '0.4rem', display: 'block' }}>
+        PHASE {phaseIndex + 1}
+      </span>
+    </div>
+  )
+}

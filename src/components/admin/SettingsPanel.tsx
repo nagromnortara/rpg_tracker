@@ -1,0 +1,512 @@
+import { useState } from 'react'
+import { formatDiceExpression } from '../../lib/dice'
+import type {
+  Campaign, ConditionGroup, Condition, ConditionPhase, Character,
+} from '../../lib/types'
+import type { useAdminActions } from '../../hooks/useAdminActions'
+
+type Actions = ReturnType<typeof useAdminActions>
+
+interface Props {
+  campaign: Campaign
+  groups: ConditionGroup[]
+  conditions: Condition[]
+  phases: ConditionPhase[]
+  characters: Character[]
+  playerBaseUrl: string
+  actions: Actions
+  onClose: () => void
+}
+
+type Tab = 'conditions' | 'characters' | 'settings'
+
+export default function SettingsPanel({ campaign, groups, conditions, phases, characters, playerBaseUrl, actions, onClose }: Props) {
+  const [tab, setTab] = useState<Tab>('conditions')
+
+  return (
+    <div style={{
+      position: 'fixed', top: 0, right: 0, bottom: 0, width: '420px', maxWidth: '100vw',
+      background: 'var(--bg-modal)', borderLeft: '1px solid var(--border-color)',
+      zIndex: 40, display: 'flex', flexDirection: 'column', boxShadow: '-4px 0 24px rgba(0,0,0,0.6)',
+    }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '1rem 1.25rem', borderBottom: '1px solid var(--border-color)' }}>
+        <h2 style={{ margin: 0, fontFamily: 'var(--font-display)', fontSize: '1.1rem', color: 'var(--text-primary)' }}>Settings</h2>
+        <button className="btn btn-ghost" onClick={onClose} style={{ padding: '0.25rem 0.5rem' }}>✕</button>
+      </div>
+
+      <div style={{ display: 'flex', borderBottom: '1px solid var(--border-color)' }}>
+        {(['conditions', 'characters', 'settings'] as Tab[]).map(t => (
+          <button
+            key={t}
+            className="btn btn-ghost"
+            onClick={() => setTab(t)}
+            style={{
+              flex: 1, borderRadius: 0, padding: '0.6rem',
+              fontSize: '0.75rem', letterSpacing: '0.05em',
+              borderBottom: tab === t ? '2px solid var(--accent-primary)' : '2px solid transparent',
+              color: tab === t ? 'var(--text-primary)' : 'var(--text-muted)',
+            }}
+          >
+            {t.toUpperCase()}
+          </button>
+        ))}
+      </div>
+
+      <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
+        {tab === 'conditions' && (
+          <ConditionsTab groups={groups} conditions={conditions} phases={phases} actions={actions} />
+        )}
+        {tab === 'characters' && (
+          <CharactersTab characters={characters} playerBaseUrl={playerBaseUrl} actions={actions} />
+        )}
+        {tab === 'settings' && (
+          <CampaignSettingsTab campaign={campaign} actions={actions} />
+        )}
+      </div>
+    </div>
+  )
+}
+
+/* ---- CONDITIONS TAB ---- */
+
+function ConditionsTab({ groups, conditions, phases, actions }: {
+  groups: ConditionGroup[]
+  conditions: Condition[]
+  phases: ConditionPhase[]
+  actions: Actions
+}) {
+  const [newGroupName, setNewGroupName] = useState('')
+  const [expandedGroups, setExpandedGroups] = useState<Set<string>>(new Set())
+  const [expandedConditions, setExpandedConditions] = useState<Set<string>>(new Set())
+
+  function toggleGroup(id: string) {
+    setExpandedGroups(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function toggleCondition(id: string) {
+    setExpandedConditions(s => { const n = new Set(s); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+
+  async function addGroup() {
+    if (!newGroupName.trim()) return
+    await actions.upsertGroup({ name: newGroupName.trim(), sort_order: groups.length })
+    setNewGroupName('')
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {groups.map(group => (
+        <GroupEditor
+          key={group.id}
+          group={group}
+          conditions={conditions.filter(c => c.group_id === group.id)}
+          phases={phases}
+          expanded={expandedGroups.has(group.id)}
+          expandedConditions={expandedConditions}
+          onToggle={() => toggleGroup(group.id)}
+          onToggleCondition={toggleCondition}
+          actions={actions}
+        />
+      ))}
+
+      <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.5rem' }}>
+        <input
+          className="input"
+          placeholder="New group name"
+          value={newGroupName}
+          onChange={e => setNewGroupName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addGroup()}
+        />
+        <button className="btn btn-secondary" onClick={addGroup} disabled={!newGroupName.trim()}
+          style={{ flexShrink: 0 }}>
+          + Group
+        </button>
+      </div>
+    </div>
+  )
+}
+
+function GroupEditor({ group, conditions, phases, expanded, expandedConditions, onToggle, onToggleCondition, actions }: {
+  group: ConditionGroup
+  conditions: Condition[]
+  phases: ConditionPhase[]
+  expanded: boolean
+  expandedConditions: Set<string>
+  onToggle: () => void
+  onToggleCondition: (id: string) => void
+  actions: Actions
+}) {
+  const [name, setName] = useState(group.name)
+  const [newCondName, setNewCondName] = useState('')
+  const [editing, setEditing] = useState(false)
+
+  async function saveName() {
+    if (name.trim() === group.name) { setEditing(false); return }
+    await actions.upsertGroup({ id: group.id, name: name.trim(), sort_order: group.sort_order })
+    setEditing(false)
+  }
+
+  async function addCondition() {
+    if (!newCondName.trim()) return
+    await actions.upsertCondition({ group_id: group.id, name: newCondName.trim(), sort_order: conditions.length })
+    setNewCondName('')
+  }
+
+  return (
+    <div className="card" style={{ padding: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+        <button className="btn btn-ghost" onClick={onToggle} style={{ padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}>
+          {expanded ? '▼' : '▶'}
+        </button>
+        {editing ? (
+          <input
+            className="input"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onBlur={saveName}
+            onKeyDown={e => e.key === 'Enter' && saveName()}
+            autoFocus
+            style={{ flex: 1 }}
+          />
+        ) : (
+          <span
+            style={{ flex: 1, color: 'var(--text-primary)', cursor: 'pointer', fontSize: '0.9rem' }}
+            onClick={() => setEditing(true)}
+          >
+            {group.name}
+          </span>
+        )}
+        <button
+          className="btn btn-ghost"
+          style={{ color: 'var(--text-danger)', padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
+          onClick={() => actions.deleteGroup(group.id)}
+          title="Delete group"
+        >
+          ✕
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ marginTop: '0.5rem', paddingLeft: '1rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          {conditions.map(cond => (
+            <ConditionEditor
+              key={cond.id}
+              cond={cond}
+              phases={phases.filter(p => p.condition_id === cond.id).sort((a, b) => a.phase_order - b.phase_order)}
+              expanded={expandedConditions.has(cond.id)}
+              onToggle={() => onToggleCondition(cond.id)}
+              actions={actions}
+            />
+          ))}
+          <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.25rem' }}>
+            <input
+              className="input"
+              placeholder="New condition"
+              value={newCondName}
+              onChange={e => setNewCondName(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && addCondition()}
+              style={{ fontSize: '0.85rem' }}
+            />
+            <button className="btn btn-secondary" onClick={addCondition} disabled={!newCondName.trim()}
+              style={{ flexShrink: 0, fontSize: '0.8rem' }}>
+              +
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
+  cond: Condition
+  phases: ConditionPhase[]
+  expanded: boolean
+  onToggle: () => void
+  actions: Actions
+}) {
+  const [name, setName] = useState(cond.name)
+  const [editing, setEditing] = useState(false)
+
+  async function saveName() {
+    if (name.trim() === cond.name) { setEditing(false); return }
+    await actions.upsertCondition({ id: cond.id, group_id: cond.group_id, name: name.trim(), sort_order: cond.sort_order })
+    setEditing(false)
+  }
+
+  async function addPhase() {
+    await actions.upsertPhase({
+      condition_id: cond.id,
+      phase_order: phases.length,
+      duration_type: 'fixed',
+      duration_expression: '1',
+      effect_text: '',
+    })
+  }
+
+  return (
+    <div style={{ borderLeft: '2px solid var(--border-color)', paddingLeft: '0.75rem' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+        <button className="btn btn-ghost" onClick={onToggle} style={{ padding: '0.15rem 0.3rem', fontSize: '0.75rem' }}>
+          {expanded ? '▼' : '▶'}
+        </button>
+        {editing ? (
+          <input
+            className="input"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            onBlur={saveName}
+            onKeyDown={e => e.key === 'Enter' && saveName()}
+            autoFocus
+            style={{ flex: 1, fontSize: '0.85rem' }}
+          />
+        ) : (
+          <span
+            style={{ flex: 1, color: 'var(--text-secondary)', cursor: 'pointer', fontSize: '0.85rem' }}
+            onClick={() => setEditing(true)}
+          >
+            {cond.name}
+            {phases.length > 0 && (
+              <span style={{ color: 'var(--text-muted)', marginLeft: '0.4rem', fontSize: '0.75rem' }}>
+                ({phases.length} phase{phases.length !== 1 ? 's' : ''})
+              </span>
+            )}
+          </span>
+        )}
+        <button
+          className="btn btn-ghost"
+          style={{ color: 'var(--text-danger)', padding: '0.15rem 0.3rem', fontSize: '0.75rem' }}
+          onClick={() => actions.deleteCondition(cond.id)}
+        >
+          ✕
+        </button>
+      </div>
+
+      {expanded && (
+        <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+          {phases.map((phase, i) => (
+            <PhaseEditor key={phase.id} phase={phase} index={i} conditionId={cond.id} actions={actions} />
+          ))}
+          <button className="btn btn-ghost" onClick={addPhase}
+            style={{ fontSize: '0.78rem', alignSelf: 'flex-start', padding: '0.2rem 0.5rem' }}>
+            + Add Phase
+          </button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function PhaseEditor({ phase, index, conditionId, actions }: {
+  phase: ConditionPhase
+  index: number
+  conditionId: string
+  actions: Actions
+}) {
+  const [durationType, setDurationType] = useState(phase.duration_type)
+  const [durationExpr, setDurationExpr] = useState(phase.duration_expression)
+  const [effectText, setEffectText] = useState(phase.effect_text)
+  const [dirty, setDirty] = useState(false)
+
+  function markDirty<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setDirty(true) }
+  }
+
+  async function save() {
+    await actions.upsertPhase({
+      id: phase.id,
+      condition_id: conditionId,
+      phase_order: index,
+      duration_type: durationType,
+      duration_expression: durationExpr,
+      effect_text: effectText,
+    })
+    setDirty(false)
+  }
+
+  return (
+    <div style={{ padding: '0.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.05em' }}>PHASE {index + 1}</span>
+        <button
+          className="btn btn-ghost"
+          style={{ color: 'var(--text-danger)', padding: '0.1rem 0.3rem', fontSize: '0.7rem' }}
+          onClick={() => actions.deletePhase(conditionId, phase.id)}
+        >
+          ✕
+        </button>
+      </div>
+
+      <div style={{ display: 'flex', gap: '0.4rem' }}>
+        <button
+          className={durationType === 'fixed' ? 'btn btn-primary' : 'btn btn-secondary'}
+          style={{ flex: 1, fontSize: '0.75rem', padding: '0.25rem' }}
+          onClick={() => markDirty(setDurationType)('fixed')}
+        >
+          Fixed
+        </button>
+        <button
+          className={durationType === 'dice' ? 'btn btn-primary' : 'btn btn-secondary'}
+          style={{ flex: 1, fontSize: '0.75rem', padding: '0.25rem' }}
+          onClick={() => markDirty(setDurationType)('dice')}
+        >
+          Dice
+        </button>
+        <input
+          className="input"
+          value={durationExpr}
+          onChange={e => markDirty(setDurationExpr)(e.target.value)}
+          placeholder={durationType === 'dice' ? '1d6' : '3'}
+          style={{ flex: 2, fontSize: '0.8rem' }}
+          title={durationType === 'dice' ? 'Dice expression e.g. 1d6, 2d4' : 'Number of turns'}
+        />
+      </div>
+
+      <div style={{ color: 'var(--text-muted)', fontSize: '0.72rem', marginTop: '0.1rem' }}>
+        {formatDiceExpression(durationExpr)}
+      </div>
+
+      <textarea
+        className="input"
+        value={effectText}
+        onChange={e => markDirty(setEffectText)(e.target.value)}
+        placeholder="Effect description..."
+        rows={2}
+        style={{ resize: 'vertical', fontSize: '0.82rem' }}
+      />
+
+      {dirty && (
+        <button className="btn btn-primary" onClick={save} style={{ fontSize: '0.8rem', padding: '0.3rem' }}>
+          Save Phase
+        </button>
+      )}
+    </div>
+  )
+}
+
+/* ---- CHARACTERS TAB ---- */
+
+function CharactersTab({ characters, playerBaseUrl, actions }: {
+  characters: Character[]
+  playerBaseUrl: string
+  actions: Actions
+}) {
+  const [newName, setNewName] = useState('')
+  const [saving, setSaving] = useState(false)
+  const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  const active = characters.filter(c => c.is_active && !c.is_npc)
+  const inactive = characters.filter(c => !c.is_active && !c.is_npc)
+
+  async function addCharacter() {
+    if (!newName.trim()) return
+    setSaving(true)
+    try {
+      await actions.addCharacter(newName.trim())
+      setNewName('')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  function copyLink(char: Character) {
+    const url = `${playerBaseUrl}/campaign/${char.campaign_id}/player/${char.player_token}`
+    navigator.clipboard.writeText(url)
+    setCopiedId(char.id)
+    setTimeout(() => setCopiedId(null), 2000)
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+      {active.map(char => (
+        <div key={char.id} className="card" style={{ padding: '0.75rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.5rem' }}>
+          <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{char.name}</span>
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button
+              className="btn btn-secondary"
+              style={{ fontSize: '0.75rem', padding: '0.3rem 0.6rem' }}
+              onClick={() => copyLink(char)}
+            >
+              {copiedId === char.id ? '✓ Copied' : 'Player Link'}
+            </button>
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '0.75rem', color: 'var(--text-muted)', padding: '0.3rem 0.5rem' }}
+              onClick={() => actions.deactivateCharacter(char.id)}
+              title="Deactivate"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      ))}
+
+      <div style={{ display: 'flex', gap: '0.5rem' }}>
+        <input
+          className="input"
+          placeholder="Character name"
+          value={newName}
+          onChange={e => setNewName(e.target.value)}
+          onKeyDown={e => e.key === 'Enter' && addCharacter()}
+        />
+        <button className="btn btn-secondary" onClick={addCharacter} disabled={!newName.trim() || saving}
+          style={{ flexShrink: 0 }}>
+          + Add
+        </button>
+      </div>
+
+      {inactive.length > 0 && (
+        <details style={{ marginTop: '0.5rem' }}>
+          <summary style={{ color: 'var(--text-muted)', fontSize: '0.8rem', cursor: 'pointer' }}>
+            Inactive ({inactive.length})
+          </summary>
+          {inactive.map(char => (
+            <div key={char.id} style={{ padding: '0.4rem 0', color: 'var(--text-muted)', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between' }}>
+              <span>{char.name}</span>
+              <button className="btn btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => copyLink(char)}>
+                {copiedId === char.id ? '✓' : 'Link'}
+              </button>
+            </div>
+          ))}
+        </details>
+      )}
+    </div>
+  )
+}
+
+/* ---- CAMPAIGN SETTINGS TAB ---- */
+
+function CampaignSettingsTab({ campaign, actions }: { campaign: Campaign; actions: Actions }) {
+  const [name, setName] = useState(campaign.name)
+  const [turns, setTurns] = useState(campaign.turns_per_minute)
+  const [saving, setSaving] = useState(false)
+
+  async function save(e: React.FormEvent) {
+    e.preventDefault()
+    setSaving(true)
+    try {
+      await actions.updateSettings({ name: name.trim(), turns_per_minute: turns })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <form onSubmit={save} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+      <div>
+        <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.35rem', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
+          CAMPAIGN NAME
+        </label>
+        <input className="input" value={name} onChange={e => setName(e.target.value)} />
+      </div>
+      <div>
+        <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.35rem', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
+          TURNS PER MINUTE
+        </label>
+        <input className="input" type="number" min={1} max={60} value={turns} onChange={e => setTurns(parseInt(e.target.value) || 6)} />
+      </div>
+      <button className="btn btn-primary" type="submit" disabled={saving} style={{ padding: '0.5rem', letterSpacing: '0.05em' }}>
+        {saving ? 'Saving...' : 'Save Settings'}
+      </button>
+    </form>
+  )
+}
