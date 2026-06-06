@@ -43,7 +43,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     call('advance_time', {
       p_campaign_id: campaignId, p_admin_token: adminToken,
       p_minutes: minutes,
-      p_dice_rolls: JSON.stringify(diceRolls),
+      p_dice_rolls: diceRolls,
     })
   )
 
@@ -131,7 +131,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     call('end_turn_advance', {
       p_campaign_id: campaignId, p_admin_token: adminToken,
       p_character_id: characterId,
-      p_dice_rolls: JSON.stringify(diceRolls),
+      p_dice_rolls: diceRolls,
     })
   )
 
