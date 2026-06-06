@@ -39,8 +39,12 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     )})
   )
 
-  const [advanceTime] = useAction((minutes: number) =>
-    call('advance_time', { p_campaign_id: campaignId, p_admin_token: adminToken, p_minutes: minutes })
+  const [advanceTime] = useAction((minutes: number, diceRolls: { character_condition_id: string; rolled_turns: number }[] = []) =>
+    call('advance_time', {
+      p_campaign_id: campaignId, p_admin_token: adminToken,
+      p_minutes: minutes,
+      p_dice_rolls: JSON.stringify(diceRolls),
+    })
   )
 
   const [upsertGroup] = useAction((params: { id?: string; name: string; sort_order: number }) =>

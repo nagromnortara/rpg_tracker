@@ -87,7 +87,14 @@ export default function AdminPage() {
           overflowY: 'auto',
         }}>
           {campaign.mode === 'exploration' ? (
-            <ExplorationClock campaign={campaign} onAdvanceTime={actions.advanceTime} />
+            <ExplorationClock
+              campaign={campaign}
+              characters={characters}
+              charConditions={charConditions}
+              conditions={conditions}
+              phases={phases}
+              onAdvanceTime={actions.advanceTime}
+            />
           ) : (
             <TacticalTracker
               campaign={campaign}

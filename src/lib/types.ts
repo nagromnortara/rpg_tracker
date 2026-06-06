@@ -74,6 +74,7 @@ export interface CampaignData {
 export interface PendingDiceRoll {
   characterConditionId: string
   conditionName: string
+  characterName?: string
   phaseOrder: number
   diceExpression: string
   durationUnit: DurationUnit

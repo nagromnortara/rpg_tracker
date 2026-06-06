@@ -35,7 +35,14 @@ export default function DiceRollModal({ rolls, turnsPerMinute, onConfirm, onClos
         {rolls.map(roll => (
           <div key={roll.characterConditionId}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.35rem' }}>
-              <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>{roll.conditionName}</span>
+              <span style={{ color: 'var(--text-primary)', fontSize: '0.9rem' }}>
+                {roll.conditionName}
+                {roll.characterName && (
+                  <span style={{ color: 'var(--text-muted)', fontWeight: 'normal', marginLeft: '0.4rem', fontSize: '0.8rem' }}>
+                    ({roll.characterName})
+                  </span>
+                )}
+              </span>
               <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>
                 Phase {roll.phaseOrder + 1} — {roll.diceExpression} {roll.durationUnit}
               </span>
@@ -55,7 +62,7 @@ export default function DiceRollModal({ rolls, turnsPerMinute, onConfirm, onClos
         <div style={{ display: 'flex', gap: '0.75rem', marginTop: '0.5rem' }}>
           <button className="btn btn-secondary" type="button" onClick={onClose} style={{ flex: 1 }}>Cancel</button>
           <button className="btn btn-primary" type="submit" disabled={!allFilled} style={{ flex: 1 }}>
-            Confirm &amp; End Turn
+            Confirm
           </button>
         </div>
       </form>
