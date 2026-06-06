@@ -502,14 +502,13 @@ function CharactersTab({ characters, playerBaseUrl, actions }: {
 
 function CampaignSettingsTab({ campaign, actions }: { campaign: Campaign; actions: Actions }) {
   const [name, setName] = useState(campaign.name)
-  const [turns, setTurns] = useState(campaign.turns_per_minute)
   const [saving, setSaving] = useState(false)
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
     setSaving(true)
     try {
-      await actions.updateSettings({ name: name.trim(), turns_per_minute: turns })
+      await actions.updateSettings({ name: name.trim() })
     } finally {
       setSaving(false)
     }
@@ -527,7 +526,19 @@ function CampaignSettingsTab({ campaign, actions }: { campaign: Campaign; action
         <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.35rem', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
           TURNS PER MINUTE
         </label>
-        <input className="input" type="number" min={1} max={60} value={turns} onChange={e => setTurns(parseInt(e.target.value) || 6)} />
+        <div style={{
+          padding: '0.5rem 0.75rem',
+          background: 'var(--bg-secondary)',
+          border: '1px solid var(--border-color)',
+          borderRadius: 'var(--radius)',
+          color: 'var(--text-secondary)',
+          fontSize: '0.9rem',
+        }}>
+          {campaign.turns_per_minute}
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem', marginLeft: '0.5rem' }}>
+            (set at campaign creation, cannot be changed)
+          </span>
+        </div>
       </div>
       <button className="btn btn-primary" type="submit" disabled={saving} style={{ padding: '0.5rem', letterSpacing: '0.05em' }}>
         {saving ? 'Saving...' : 'Save Settings'}
