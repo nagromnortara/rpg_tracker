@@ -265,14 +265,15 @@ function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit
   isMobile: boolean
   onRemove: (id: string) => Promise<void>
 }) {
+  const [confirming, setConfirming] = useState(false)
   const [removing, setRemoving] = useState(false)
   const urgency = remainingUrgency(remainingTurns, durationUnit, turnsPerMinute)
   const borderColor = urgency === 'danger' ? 'var(--text-danger)' : urgency === 'warning' ? '#c8a900' : 'var(--border-color)'
   const displayRemaining = formatRemaining(remainingTurns, durationUnit, turnsPerMinute)
 
-  async function handleRemove() {
+  async function handleConfirm() {
     setRemoving(true)
-    try { await onRemove(ccId) } finally { setRemoving(false) }
+    try { await onRemove(ccId) } finally { setRemoving(false); setConfirming(false) }
   }
 
   return (
@@ -288,19 +289,39 @@ function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit
             </span>
           )}
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
           <span style={{ color: borderColor, fontSize: isMobile ? '1rem' : '1.1rem', fontFamily: 'var(--font-body)', whiteSpace: 'nowrap' }}>
             {displayRemaining}
           </span>
-          <button
-            className="btn btn-ghost"
-            style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', color: 'var(--text-muted)' }}
-            onClick={handleRemove}
-            disabled={removing}
-            title="Dismiss condition"
-          >
-            {removing ? '…' : 'Dismiss'}
-          </button>
+          {confirming ? (
+            <>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', color: 'var(--text-danger)' }}
+                onClick={handleConfirm}
+                disabled={removing}
+              >
+                {removing ? '…' : 'Yes, dismiss'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', color: 'var(--text-muted)' }}
+                onClick={() => setConfirming(false)}
+                disabled={removing}
+              >
+                Cancel
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '0.72rem', padding: '0.2rem 0.5rem', color: 'var(--text-muted)' }}
+              onClick={() => setConfirming(true)}
+              title="Dismiss condition"
+            >
+              Dismiss
+            </button>
+          )}
         </div>
       </div>
       {phaseText && (

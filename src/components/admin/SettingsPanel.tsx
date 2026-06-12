@@ -175,14 +175,7 @@ function GroupEditor({ group, conditions, phases, expanded, expandedConditions, 
             {group.name}
           </span>
         )}
-        <button
-          className="btn btn-ghost"
-          style={{ color: 'var(--text-danger)', padding: '0.2rem 0.4rem', fontSize: '0.8rem' }}
-          onClick={() => actions.deleteGroup(group.id)}
-          title="Delete group"
-        >
-          ✕
-        </button>
+        <ConfirmDeleteButton onConfirm={() => actions.deleteGroup(group.id)} />
       </div>
 
       {expanded && (
@@ -273,13 +266,7 @@ function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
             )}
           </span>
         )}
-        <button
-          className="btn btn-ghost"
-          style={{ color: 'var(--text-danger)', padding: '0.15rem 0.3rem', fontSize: '0.75rem' }}
-          onClick={() => actions.deleteCondition(cond.id)}
-        >
-          ✕
-        </button>
+        <ConfirmDeleteButton onConfirm={() => actions.deleteCondition(cond.id)} />
       </div>
 
       {expanded && (
@@ -294,6 +281,42 @@ function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
         </div>
       )}
     </div>
+  )
+}
+
+function ConfirmDeleteButton({ onConfirm, size = 'sm' }: { onConfirm: () => void; size?: 'sm' | 'xs' }) {
+  const [confirming, setConfirming] = useState(false)
+  const fs = size === 'xs' ? '0.7rem' : '0.75rem'
+  const pad = size === 'xs' ? '0.1rem 0.3rem' : '0.2rem 0.4rem'
+  if (confirming) {
+    return (
+      <span style={{ display: 'flex', gap: '0.25rem', alignItems: 'center' }}>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: fs, padding: pad, color: 'var(--text-danger)' }}
+          onClick={() => { onConfirm(); setConfirming(false) }}
+        >
+          Yes
+        </button>
+        <button
+          className="btn btn-ghost"
+          style={{ fontSize: fs, padding: pad, color: 'var(--text-muted)' }}
+          onClick={() => setConfirming(false)}
+        >
+          No
+        </button>
+      </span>
+    )
+  }
+  return (
+    <button
+      className="btn btn-ghost"
+      style={{ color: 'var(--text-danger)', padding: pad, fontSize: fs }}
+      onClick={() => setConfirming(true)}
+      title="Delete"
+    >
+      ✕
+    </button>
   )
 }
 
@@ -332,13 +355,7 @@ function PhaseEditor({ phase, index, conditionId, actions }: {
     <div style={{ padding: '0.5rem', background: 'var(--bg-secondary)', borderRadius: 'var(--radius)', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.05em' }}>PHASE {index + 1}</span>
-        <button
-          className="btn btn-ghost"
-          style={{ color: 'var(--text-danger)', padding: '0.1rem 0.3rem', fontSize: '0.7rem' }}
-          onClick={() => actions.deletePhase(conditionId, phase.id)}
-        >
-          ✕
-        </button>
+        <ConfirmDeleteButton onConfirm={() => actions.deletePhase(conditionId, phase.id)} size="xs" />
       </div>
 
       {/* Type + expression */}
