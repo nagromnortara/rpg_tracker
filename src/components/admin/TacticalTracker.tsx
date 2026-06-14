@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import DiceRollModal from './DiceRollModal'
 import { computePendingDiceRolls } from '../../lib/endTurnCheck'
-import type { Campaign, Character, CharacterCondition, Condition, ConditionPhase, PendingDiceRoll } from '../../lib/types'
+import { currentRound, effectsForRound } from '../../lib/effects'
+import type { Campaign, Character, CharacterCondition, Condition, ConditionPhase, PhaseEffect, PendingDiceRoll } from '../../lib/types'
+import type { DiceRollResult, EffectLogInput } from '../../hooks/useAdminActions'
 
 interface Props {
   campaign: Campaign
@@ -9,11 +11,12 @@ interface Props {
   charConditions: CharacterCondition[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   currentCharId: string | undefined
-  onEndTurn: (characterId: string, diceRolls: { character_condition_id: string; rolled_turns: number }[]) => Promise<unknown>
+  onEndTurn: (characterId: string, diceRolls: DiceRollResult[], effectLog: EffectLogInput[]) => Promise<unknown>
 }
 
-export default function TacticalTracker({ campaign, characters, charConditions, conditions, phases, currentCharId, onEndTurn }: Props) {
+export default function TacticalTracker({ campaign, characters, charConditions, conditions, phases, phaseEffects, currentCharId, onEndTurn }: Props) {
   const [pendingRolls, setPendingRolls] = useState<PendingDiceRoll[] | null>(null)
   const [pendingCharId, setPendingCharId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
@@ -25,10 +28,35 @@ export default function TacticalTracker({ campaign, characters, charConditions, 
 
   const currentChar = characters.find(c => c.id === currentCharId)
 
+  // Effects firing on the round each of this character's conditions is currently
+  // on — logged as the turn is ended.
+  function buildEffectLog(charId: string): EffectLogInput[] {
+    const out: EffectLogInput[] = []
+    for (const cc of charConditions.filter(c => c.character_id === charId && c.is_active)) {
+      const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
+      if (!phase) continue
+      const effs = phaseEffects.filter(e => e.phase_id === phase.id)
+      const r = currentRound(cc.phase_total_turns, cc.remaining_turns)
+      const cond = conditions.find(c => c.id === cc.condition_id)
+      for (const f of effectsForRound(effs, cc.effect_values, r, cc.phase_total_turns)) {
+        out.push({
+          character_id: charId,
+          condition_id: cc.condition_id,
+          turn: campaign.current_turn,
+          label: cond?.name ?? 'Unknown',
+          target: f.target,
+          value: f.value,
+          detail: f.detail,
+        })
+      }
+    }
+    return out
+  }
+
   function handleEndTurnClick() {
     if (!currentChar) return
     setEndTurnError(null)
-    const rolls = computePendingDiceRolls(currentChar.id, charConditions, conditions, phases)
+    const rolls = computePendingDiceRolls(currentChar.id, charConditions, conditions, phases, phaseEffects)
     if (rolls.length > 0) {
       setPendingRolls(rolls)
       setPendingCharId(currentChar.id)
@@ -37,11 +65,11 @@ export default function TacticalTracker({ campaign, characters, charConditions, 
     }
   }
 
-  async function doEndTurn(charId: string, rolls: { character_condition_id: string; rolled_turns: number }[]) {
+  async function doEndTurn(charId: string, rolls: DiceRollResult[]) {
     setSaving(true)
     setEndTurnError(null)
     try {
-      await onEndTurn(charId, rolls)
+      await onEndTurn(charId, rolls, buildEffectLog(charId))
     } catch (e) {
       setEndTurnError(e instanceof Error ? e.message : 'Failed to advance turn')
     } finally {

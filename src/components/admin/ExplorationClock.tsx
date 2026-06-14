@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { formatTime, formatDay } from '../../lib/time'
 import { computeExplorationPendingRolls } from '../../lib/endTurnCheck'
+import { currentRound, aggregateRounds } from '../../lib/effects'
 import DiceRollModal from './DiceRollModal'
-import type { Campaign, Character, CharacterCondition, Condition, ConditionPhase, PendingDiceRoll } from '../../lib/types'
+import type { Campaign, Character, CharacterCondition, Condition, ConditionPhase, PhaseEffect, PendingDiceRoll } from '../../lib/types'
+import type { DiceRollResult, EffectLogInput } from '../../hooks/useAdminActions'
 
 interface Props {
   campaign: Campaign
@@ -10,10 +12,11 @@ interface Props {
   charConditions: CharacterCondition[]
   conditions: Condition[]
   phases: ConditionPhase[]
-  onAdvanceTime: (minutes: number, diceRolls?: { character_condition_id: string; rolled_turns: number }[]) => Promise<unknown>
+  phaseEffects: PhaseEffect[]
+  onAdvanceTime: (minutes: number, diceRolls?: DiceRollResult[], effectLog?: EffectLogInput[]) => Promise<unknown>
 }
 
-export default function ExplorationClock({ campaign, characters, charConditions, conditions, phases, onAdvanceTime }: Props) {
+export default function ExplorationClock({ campaign, characters, charConditions, conditions, phases, phaseEffects, onAdvanceTime }: Props) {
   const [hours, setHours] = useState(0)
   const [minutes, setMinutes] = useState(0)
   const [saving, setSaving] = useState(false)
@@ -26,7 +29,7 @@ export default function ExplorationClock({ campaign, characters, charConditions,
     if (total <= 0) return
 
     const advTurns = total * campaign.turns_per_minute
-    const rolls = computeExplorationPendingRolls(advTurns, charConditions, characters, conditions, phases)
+    const rolls = computeExplorationPendingRolls(advTurns, charConditions, characters, conditions, phases, phaseEffects)
 
     if (rolls.length > 0) {
       setPendingMinutes(total)
@@ -37,10 +40,39 @@ export default function ExplorationClock({ campaign, characters, charConditions,
     await doAdvance(total)
   }
 
-  async function doAdvance(total: number, diceRolls?: { character_condition_id: string; rolled_turns: number }[]) {
+  // Cumulative effects across all rounds traversed within each condition's
+  // current phase during a bulk time-skip (one entry per condition/target).
+  function buildEffectLog(total: number): EffectLogInput[] {
+    const advTurns = total * campaign.turns_per_minute
+    const activeCharIds = new Set(characters.filter(c => c.is_active).map(c => c.id))
+    const out: EffectLogInput[] = []
+    for (const cc of charConditions.filter(c => c.is_active && activeCharIds.has(c.character_id))) {
+      const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
+      if (!phase) continue
+      const effs = phaseEffects.filter(e => e.phase_id === phase.id)
+      if (effs.length === 0) continue
+      const r = currentRound(cc.phase_total_turns, cc.remaining_turns)
+      const roundsInPhase = Math.min(advTurns, cc.remaining_turns)
+      const cond = conditions.find(c => c.id === cc.condition_id)
+      for (const f of aggregateRounds(effs, cc.effect_values, r, r + roundsInPhase - 1, cc.phase_total_turns)) {
+        out.push({
+          character_id: cc.character_id,
+          condition_id: cc.condition_id,
+          turn: campaign.current_turn,
+          label: cond?.name ?? 'Unknown',
+          target: f.target,
+          value: f.value,
+          detail: f.detail,
+        })
+      }
+    }
+    return out
+  }
+
+  async function doAdvance(total: number, diceRolls?: DiceRollResult[]) {
     setSaving(true)
     try {
-      await onAdvanceTime(total, diceRolls)
+      await onAdvanceTime(total, diceRolls, buildEffectLog(total))
       setHours(0)
       setMinutes(0)
     } finally {
@@ -48,7 +80,7 @@ export default function ExplorationClock({ campaign, characters, charConditions,
     }
   }
 
-  async function handleDiceConfirm(results: { character_condition_id: string; rolled_turns: number }[]) {
+  async function handleDiceConfirm(results: DiceRollResult[]) {
     setPendingRolls([])
     await doAdvance(pendingMinutes, results)
     setPendingMinutes(0)

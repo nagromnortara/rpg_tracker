@@ -5,8 +5,10 @@ import { useCampaignData } from '../hooks/useCampaignData'
 import { useIsMobile } from '../hooks/useIsMobile'
 import { formatTime, formatDay, formatTurnTimestamp } from '../lib/time'
 import { formatRemaining, remainingUrgency } from '../lib/dice'
+import { currentRound, effectsForRound } from '../lib/effects'
 import ApplyConditionModal from '../components/admin/ApplyConditionModal'
-import type { Character, DurationUnit } from '../lib/types'
+import EffectLogPanel from '../components/EffectLogPanel'
+import type { Character, DurationUnit, FiredEffect, PhaseEffect } from '../lib/types'
 
 export default function PlayerPage() {
   const { campaignId, playerToken } = useParams<{ campaignId: string; playerToken: string }>()
@@ -48,7 +50,7 @@ export default function PlayerPage() {
     )
   }
 
-  const { campaign, groups, conditions, phases, charConditions } = data
+  const { campaign, groups, conditions, phases, phaseEffects, charConditions, effectLog } = data
 
   const myActive = charConditions.filter(cc => cc.character_id === character.id && cc.is_active)
   const myExpired = charConditions
@@ -67,13 +69,17 @@ export default function PlayerPage() {
       })),
   })).filter(g => g.items.length > 0)
 
-  async function handleApplyCondition(params: { character_id: string; condition_id: string; first_phase_turns: number; source_note?: string }) {
+  async function handleApplyCondition(params: {
+    character_id: string; condition_id: string; first_phase_turns: number;
+    source_note?: string; effect_values?: Record<string, number>
+  }) {
     const { error } = await supabase.rpc('player_apply_condition', {
       p_campaign_id: campaignId,
       p_player_token: playerToken,
       p_condition_id: params.condition_id,
       p_first_phase_turns: params.first_phase_turns,
       p_source_note: params.source_note ?? null,
+      p_effect_values: params.effect_values ?? {},
     })
     if (error) throw new Error(error.message)
   }
@@ -175,6 +181,9 @@ export default function PlayerPage() {
                       turnsPerMinute={campaign.turns_per_minute}
                       phaseIndex={cc.current_phase}
                       phaseText={phase?.effect_text ?? ''}
+                      effects={phase ? phaseEffects.filter(e => e.phase_id === phase.id) : []}
+                      effectValues={cc.effect_values}
+                      phaseTotalTurns={cc.phase_total_turns}
                       sourceNote={cc.source_note}
                       isMobile={isMobile}
                       onRemove={handleRemoveCondition}
@@ -197,6 +206,9 @@ export default function PlayerPage() {
                   turnsPerMinute={campaign.turns_per_minute}
                   phaseIndex={cc.current_phase}
                   phaseText={phase?.effect_text ?? ''}
+                  effects={phase ? phaseEffects.filter(e => e.phase_id === phase.id) : []}
+                  effectValues={cc.effect_values}
+                  phaseTotalTurns={cc.phase_total_turns}
                   sourceNote={cc.source_note}
                   isMobile={isMobile}
                   onRemove={handleRemoveCondition}
@@ -213,10 +225,23 @@ export default function PlayerPage() {
           groups={groups}
           conditions={conditions}
           phases={phases}
+          phaseEffects={phaseEffects}
           turnsPerMinute={campaign.turns_per_minute}
           onApply={handleApplyCondition}
           onClose={() => setShowApply(false)}
         />
+      )}
+
+      {/* Effect log for this character */}
+      {effectLog.some(e => e.character_id === character.id) && (
+        <div style={{ marginTop: '2rem' }}>
+          <EffectLogPanel
+            entries={effectLog}
+            characters={data.characters}
+            turnsPerMinute={campaign.turns_per_minute}
+            characterId={character.id}
+          />
+        </div>
       )}
 
       {/* Expired log */}
@@ -253,7 +278,11 @@ export default function PlayerPage() {
   )
 }
 
-function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit, turnsPerMinute, phaseIndex, phaseText, sourceNote, isMobile, onRemove }: {
+function fmtEffectValue(v: number): string {
+  return v > 0 ? `+${v}` : `${v}`
+}
+
+function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit, turnsPerMinute, phaseIndex, phaseText, effects, effectValues, phaseTotalTurns, sourceNote, isMobile, onRemove }: {
   ccId: string
   conditionName: string
   remainingTurns: number
@@ -261,6 +290,9 @@ function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit
   turnsPerMinute: number
   phaseIndex: number
   phaseText: string
+  effects: PhaseEffect[]
+  effectValues: Record<string, number>
+  phaseTotalTurns: number
   sourceNote: string | null
   isMobile: boolean
   onRemove: (id: string) => Promise<void>
@@ -270,6 +302,8 @@ function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit
   const urgency = remainingUrgency(remainingTurns, durationUnit, turnsPerMinute)
   const borderColor = urgency === 'danger' ? 'var(--text-danger)' : urgency === 'warning' ? '#c8a900' : 'var(--border-color)'
   const displayRemaining = formatRemaining(remainingTurns, durationUnit, turnsPerMinute)
+  const r = currentRound(phaseTotalTurns, remainingTurns)
+  const firingNow: FiredEffect[] = effectsForRound(effects, effectValues, r, phaseTotalTurns)
 
   async function handleConfirm() {
     setRemoving(true)
@@ -328,6 +362,19 @@ function PlayerConditionCard({ ccId, conditionName, remainingTurns, durationUnit
         <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', margin: 0, lineHeight: 1.5 }}>
           {phaseText}
         </p>
+      )}
+      {firingNow.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', marginTop: '0.5rem', alignItems: 'center' }}>
+          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem', letterSpacing: '0.05em' }}>THIS ROUND:</span>
+          {firingNow.map(f => (
+            <span key={f.effectId} style={{
+              fontSize: '0.85rem', padding: '0.1rem 0.55rem', borderRadius: 'var(--radius)',
+              background: 'var(--accent-primary)', color: 'var(--bg-primary)', fontFamily: 'var(--font-body)',
+            }}>
+              {fmtEffectValue(f.value)} {f.target}
+            </span>
+          ))}
+        </div>
       )}
       <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', letterSpacing: '0.05em', marginTop: '0.35rem', display: 'block' }}>
         PHASE {phaseIndex + 1}

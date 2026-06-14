@@ -8,6 +8,7 @@ import TacticalTracker from '../components/admin/TacticalTracker'
 import InitiativeSetupModal from '../components/admin/InitiativeSetupModal'
 import CharacterCard from '../components/admin/CharacterCard'
 import SettingsPanel from '../components/admin/SettingsPanel'
+import EffectLogPanel from '../components/EffectLogPanel'
 
 export default function AdminPage() {
   const { campaignId, adminToken } = useParams<{ campaignId: string; adminToken: string }>()
@@ -25,7 +26,7 @@ export default function AdminPage() {
   if (data.error) return <ErrorScreen message={data.error} />
   if (!data.campaign) return <ErrorScreen message="Campaign not found." />
 
-  const { campaign, groups, conditions, phases, characters, charConditions } = data
+  const { campaign, groups, conditions, phases, phaseEffects, characters, charConditions, effectLog } = data
   const activeChars = characters.filter(c => c.is_active && !c.is_npc)
   const tacticalSorted = [...characters]
     .filter(c => c.is_active && c.initiative_order !== null)
@@ -70,6 +71,7 @@ export default function AdminPage() {
           charConditions={charConditions}
           conditions={conditions}
           phases={phases}
+          phaseEffects={phaseEffects}
           onAdvanceTime={actions.advanceTime}
         />
       ) : (
@@ -79,6 +81,7 @@ export default function AdminPage() {
           charConditions={charConditions}
           conditions={conditions}
           phases={phases}
+          phaseEffects={phaseEffects}
           currentCharId={currentTurnCharId}
           onEndTurn={actions.endTurnAdvance}
         />
@@ -101,6 +104,8 @@ export default function AdminPage() {
           🕐 Return to Exploration
         </button>
       )}
+      <hr className="divider" />
+      <EffectLogPanel entries={effectLog} characters={characters} turnsPerMinute={campaign.turns_per_minute} />
     </div>
   )
 
@@ -125,6 +130,7 @@ export default function AdminPage() {
               groups={groups}
               conditions={conditions}
               phases={phases}
+              phaseEffects={phaseEffects}
               turnsPerMinute={campaign.turns_per_minute}
               isCurrentTurn={char.id === currentTurnCharId}
               onApplyCondition={actions.applyCondition}
@@ -242,6 +248,7 @@ export default function AdminPage() {
             groups={groups}
             conditions={conditions}
             phases={phases}
+            phaseEffects={phaseEffects}
             characters={characters}
             playerBaseUrl={playerBaseUrl}
             actions={actions}

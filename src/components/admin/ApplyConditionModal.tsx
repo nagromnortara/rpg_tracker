@@ -1,22 +1,27 @@
 import { useState } from 'react'
 import Modal from '../ui/Modal'
 import { formatDiceExpression, isDiceExpression, toTurns } from '../../lib/dice'
-import type { Character, ConditionGroup, Condition, ConditionPhase } from '../../lib/types'
+import type { Character, ConditionGroup, Condition, ConditionPhase, PhaseEffect } from '../../lib/types'
 
 interface Props {
   character: Character
   groups: ConditionGroup[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   turnsPerMinute: number
-  onApply: (params: { character_id: string; condition_id: string; first_phase_turns: number; source_note?: string }) => Promise<unknown>
+  onApply: (params: {
+    character_id: string; condition_id: string; first_phase_turns: number;
+    source_note?: string; effect_values?: Record<string, number>
+  }) => Promise<unknown>
   onClose: () => void
 }
 
-export default function ApplyConditionModal({ character, groups, conditions, phases, turnsPerMinute, onApply, onClose }: Props) {
+export default function ApplyConditionModal({ character, groups, conditions, phases, phaseEffects, turnsPerMinute, onApply, onClose }: Props) {
   const [selectedGroupId, setSelectedGroupId] = useState<string>(groups[0]?.id ?? '')
   const [selectedConditionId, setSelectedConditionId] = useState<string>('')
   const [rolledTurns, setRolledTurns] = useState('')
+  const [effectRolls, setEffectRolls] = useState<Record<string, string>>({})
   const [sourceNote, setSourceNote] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -28,6 +33,9 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
     : null
 
   const needsDiceRoll = firstPhase?.duration_type === 'dice'
+  const diceEffects = firstPhase
+    ? phaseEffects.filter(e => e.phase_id === firstPhase.id && e.value_type === 'dice').sort((a, b) => a.sort_order - b.sort_order)
+    : []
 
   function computeFirstPhaseTurns(): number | null {
     if (!firstPhase) return null
@@ -37,6 +45,12 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
     }
     const val = parseInt(rolledTurns)
     return val > 0 ? toTurns(val, firstPhase.duration_unit, turnsPerMinute) : null
+  }
+
+  function computeEffectValues(): Record<string, number> {
+    const out: Record<string, number> = {}
+    for (const eff of diceEffects) out[eff.id] = parseInt(effectRolls[eff.id]) || 0
+    return out
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -51,6 +65,7 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
         condition_id: selectedConditionId,
         first_phase_turns: turns,
         source_note: sourceNote.trim() || undefined,
+        effect_values: computeEffectValues(),
       })
       onClose()
     } catch (e) {
@@ -60,7 +75,12 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
     }
   }
 
-  const canSubmit = !!selectedConditionId && firstPhase !== null && (!needsDiceRoll || parseInt(rolledTurns) > 0)
+  const effectsFilled = diceEffects.every(eff => {
+    const v = effectRolls[eff.id]
+    return v !== undefined && v !== '' && parseInt(v) >= 0
+  })
+  const canSubmit = !!selectedConditionId && firstPhase !== null
+    && (!needsDiceRoll || parseInt(rolledTurns) > 0) && effectsFilled
 
   return (
     <Modal title={`Apply Condition — ${character.name}`} onClose={onClose}>
@@ -100,7 +120,7 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
                 type="button"
                 className={selectedConditionId === c.id ? 'btn btn-primary' : 'btn btn-secondary'}
                 style={{ textAlign: 'left', padding: '0.4rem 0.75rem', fontSize: '0.85rem' }}
-                onClick={() => { setSelectedConditionId(c.id); setRolledTurns('') }}
+                onClick={() => { setSelectedConditionId(c.id); setRolledTurns(''); setEffectRolls({}) }}
               >
                 {c.name}
               </button>
@@ -167,6 +187,24 @@ export default function ApplyConditionModal({ character, groups, conditions, pha
             Duration: {formatDiceExpression(firstPhase.duration_expression, firstPhase.duration_unit)}
           </p>
         )}
+
+        {/* Dice-valued effect rolls for the first phase */}
+        {diceEffects.map(eff => (
+          <div key={eff.id}>
+            <label style={{ display: 'block', color: 'var(--text-muted)', marginBottom: '0.35rem', fontSize: '0.75rem', letterSpacing: '0.08em' }}>
+              {eff.target.toUpperCase()} — ROLL {eff.value_expression.toUpperCase()}
+            </label>
+            <input
+              className="input"
+              type="number"
+              min={0}
+              placeholder={`${eff.target} value`}
+              value={effectRolls[eff.id] ?? ''}
+              onChange={e => setEffectRolls(prev => ({ ...prev, [eff.id]: e.target.value }))}
+              required
+            />
+          </div>
+        ))}
 
         {/* Source note */}
         <div>

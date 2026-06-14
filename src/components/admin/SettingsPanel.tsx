@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { formatDiceExpression } from '../../lib/dice'
 import type {
-  Campaign, ConditionGroup, Condition, ConditionPhase, Character, DurationUnit,
+  Campaign, ConditionGroup, Condition, ConditionPhase, PhaseEffect, Character,
+  DurationUnit, EffectTiming, EffectValueType,
 } from '../../lib/types'
 import type { useAdminActions } from '../../hooks/useAdminActions'
 
@@ -12,6 +13,7 @@ interface Props {
   groups: ConditionGroup[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   characters: Character[]
   playerBaseUrl: string
   actions: Actions
@@ -20,7 +22,7 @@ interface Props {
 
 type Tab = 'conditions' | 'characters' | 'settings'
 
-export default function SettingsPanel({ campaign, groups, conditions, phases, characters, playerBaseUrl, actions, onClose }: Props) {
+export default function SettingsPanel({ campaign, groups, conditions, phases, phaseEffects, characters, playerBaseUrl, actions, onClose }: Props) {
   const [tab, setTab] = useState<Tab>('conditions')
 
   return (
@@ -54,7 +56,7 @@ export default function SettingsPanel({ campaign, groups, conditions, phases, ch
 
       <div style={{ flex: 1, overflowY: 'auto', padding: '1.25rem' }}>
         {tab === 'conditions' && (
-          <ConditionsTab groups={groups} conditions={conditions} phases={phases} actions={actions} />
+          <ConditionsTab groups={groups} conditions={conditions} phases={phases} phaseEffects={phaseEffects} actions={actions} />
         )}
         {tab === 'characters' && (
           <CharactersTab characters={characters} playerBaseUrl={playerBaseUrl} actions={actions} />
@@ -69,10 +71,11 @@ export default function SettingsPanel({ campaign, groups, conditions, phases, ch
 
 /* ---- CONDITIONS TAB ---- */
 
-function ConditionsTab({ groups, conditions, phases, actions }: {
+function ConditionsTab({ groups, conditions, phases, phaseEffects, actions }: {
   groups: ConditionGroup[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   actions: Actions
 }) {
   const [newGroupName, setNewGroupName] = useState('')
@@ -100,6 +103,7 @@ function ConditionsTab({ groups, conditions, phases, actions }: {
           group={group}
           conditions={conditions.filter(c => c.group_id === group.id)}
           phases={phases}
+          phaseEffects={phaseEffects}
           expanded={expandedGroups.has(group.id)}
           expandedConditions={expandedConditions}
           onToggle={() => toggleGroup(group.id)}
@@ -125,10 +129,11 @@ function ConditionsTab({ groups, conditions, phases, actions }: {
   )
 }
 
-function GroupEditor({ group, conditions, phases, expanded, expandedConditions, onToggle, onToggleCondition, actions }: {
+function GroupEditor({ group, conditions, phases, phaseEffects, expanded, expandedConditions, onToggle, onToggleCondition, actions }: {
   group: ConditionGroup
   conditions: Condition[]
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   expanded: boolean
   expandedConditions: Set<string>
   onToggle: () => void
@@ -185,6 +190,7 @@ function GroupEditor({ group, conditions, phases, expanded, expandedConditions, 
               key={cond.id}
               cond={cond}
               phases={phases.filter(p => p.condition_id === cond.id).sort((a, b) => a.phase_order - b.phase_order)}
+              phaseEffects={phaseEffects}
               expanded={expandedConditions.has(cond.id)}
               onToggle={() => onToggleCondition(cond.id)}
               actions={actions}
@@ -210,9 +216,10 @@ function GroupEditor({ group, conditions, phases, expanded, expandedConditions, 
   )
 }
 
-function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
+function ConditionEditor({ cond, phases, phaseEffects, expanded, onToggle, actions }: {
   cond: Condition
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   expanded: boolean
   onToggle: () => void
   actions: Actions
@@ -272,7 +279,14 @@ function ConditionEditor({ cond, phases, expanded, onToggle, actions }: {
       {expanded && (
         <div style={{ marginTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
           {phases.map((phase, i) => (
-            <PhaseEditor key={phase.id} phase={phase} index={i} conditionId={cond.id} actions={actions} />
+            <PhaseEditor
+              key={phase.id}
+              phase={phase}
+              index={i}
+              conditionId={cond.id}
+              effects={phaseEffects.filter(e => e.phase_id === phase.id).sort((a, b) => a.sort_order - b.sort_order)}
+              actions={actions}
+            />
           ))}
           <button className="btn btn-ghost" onClick={addPhase}
             style={{ fontSize: '0.78rem', alignSelf: 'flex-start', padding: '0.2rem 0.5rem' }}>
@@ -322,10 +336,11 @@ function ConfirmDeleteButton({ onConfirm, size = 'sm' }: { onConfirm: () => void
 
 const DURATION_UNITS: DurationUnit[] = ['turns', 'minutes', 'hours', 'days']
 
-function PhaseEditor({ phase, index, conditionId, actions }: {
+function PhaseEditor({ phase, index, conditionId, effects, actions }: {
   phase: ConditionPhase
   index: number
   conditionId: string
+  effects: PhaseEffect[]
   actions: Actions
 }) {
   const [durationType, setDurationType] = useState(phase.duration_type)
@@ -414,6 +429,114 @@ function PhaseEditor({ phase, index, conditionId, actions }: {
       {dirty && (
         <button className="btn btn-primary" onClick={save} style={{ fontSize: '0.8rem', padding: '0.3rem' }}>
           Save Phase
+        </button>
+      )}
+
+      {/* Structured effects */}
+      <div style={{ borderTop: '1px solid var(--border-color)', paddingTop: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.68rem', letterSpacing: '0.05em' }}>EFFECTS</span>
+        {effects.map(eff => (
+          <EffectEditor key={eff.id} effect={eff} phaseId={phase.id} actions={actions} />
+        ))}
+        <button
+          className="btn btn-ghost"
+          onClick={() => actions.upsertPhaseEffect({
+            phase_id: phase.id, timing: 'every', target: '', value_type: 'fixed', value_expression: '1', sort_order: effects.length,
+          })}
+          style={{ fontSize: '0.74rem', alignSelf: 'flex-start', padding: '0.15rem 0.45rem' }}
+        >
+          + Add Effect
+        </button>
+      </div>
+    </div>
+  )
+}
+
+const TIMINGS: { value: EffectTiming; label: string }[] = [
+  { value: 'first', label: 'First' },
+  { value: 'last', label: 'Last' },
+  { value: 'every', label: 'Every' },
+  { value: 'distributed', label: 'Spread' },
+]
+
+function EffectEditor({ effect, phaseId, actions }: {
+  effect: PhaseEffect
+  phaseId: string
+  actions: Actions
+}) {
+  const [timing, setTiming] = useState<EffectTiming>(effect.timing)
+  const [target, setTarget] = useState(effect.target)
+  const [valueType, setValueType] = useState<EffectValueType>(effect.value_type)
+  const [valueExpr, setValueExpr] = useState(effect.value_expression)
+  const [dirty, setDirty] = useState(false)
+
+  function mark<T>(setter: (v: T) => void) {
+    return (v: T) => { setter(v); setDirty(true) }
+  }
+
+  async function save() {
+    await actions.upsertPhaseEffect({
+      id: effect.id,
+      phase_id: phaseId,
+      timing,
+      target: target.trim(),
+      value_type: valueType,
+      value_expression: valueExpr.trim() || (valueType === 'dice' ? '1d6' : '1'),
+      sort_order: effect.sort_order,
+    })
+    setDirty(false)
+  }
+
+  return (
+    <div style={{ background: 'var(--bg-modal)', borderRadius: 'var(--radius)', padding: '0.4rem', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
+      <div style={{ display: 'flex', gap: '0.25rem' }}>
+        {TIMINGS.map(t => (
+          <button
+            key={t.value}
+            className={timing === t.value ? 'btn btn-primary' : 'btn btn-secondary'}
+            style={{ flex: 1, fontSize: '0.68rem', padding: '0.2rem 0' }}
+            onClick={() => mark(setTiming)(t.value)}
+            title={t.value === 'distributed' ? 'Spread the total over the phase (1 on first & last round)' : undefined}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      <div style={{ display: 'flex', gap: '0.3rem', alignItems: 'center' }}>
+        <input
+          className="input"
+          value={target}
+          onChange={e => mark(setTarget)(e.target.value)}
+          placeholder="Target (HP, ST…)"
+          style={{ flex: 1, fontSize: '0.78rem' }}
+        />
+        <button
+          className={valueType === 'fixed' ? 'btn btn-primary' : 'btn btn-secondary'}
+          style={{ fontSize: '0.68rem', padding: '0.2rem 0.4rem' }}
+          onClick={() => mark(setValueType)('fixed')}
+        >
+          Fixed
+        </button>
+        <button
+          className={valueType === 'dice' ? 'btn btn-primary' : 'btn btn-secondary'}
+          style={{ fontSize: '0.68rem', padding: '0.2rem 0.4rem' }}
+          onClick={() => mark(setValueType)('dice')}
+        >
+          Dice
+        </button>
+        <input
+          className="input"
+          value={valueExpr}
+          onChange={e => mark(setValueExpr)(e.target.value)}
+          placeholder={valueType === 'dice' ? '1d6' : '2'}
+          style={{ width: '3.5rem', fontSize: '0.78rem' }}
+          title={valueType === 'dice' ? 'Dice expression, rolled when the phase is entered' : 'Fixed amount'}
+        />
+        <ConfirmDeleteButton onConfirm={() => actions.deletePhaseEffect(phaseId, effect.id)} size="xs" />
+      </div>
+      {dirty && (
+        <button className="btn btn-primary" onClick={save} style={{ fontSize: '0.72rem', padding: '0.2rem' }}>
+          Save Effect
         </button>
       )}
     </div>

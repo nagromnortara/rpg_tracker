@@ -2,7 +2,7 @@ import { useState } from 'react'
 import ConditionBadge from './ConditionBadge'
 import ApplyConditionModal from './ApplyConditionModal'
 import { formatTurnTimestamp } from '../../lib/time'
-import type { Character, CharacterCondition, ConditionGroup, Condition, ConditionPhase } from '../../lib/types'
+import type { Character, CharacterCondition, ConditionGroup, Condition, ConditionPhase, PhaseEffect } from '../../lib/types'
 
 interface Props {
   character: Character
@@ -10,12 +10,16 @@ interface Props {
   groups: ConditionGroup[]
   conditions: Condition[]
   phases: ConditionPhase[]
+  phaseEffects: PhaseEffect[]
   turnsPerMinute: number
   isCurrentTurn?: boolean
-  onApplyCondition: (params: { character_id: string; condition_id: string; first_phase_turns: number; source_note?: string }) => Promise<unknown>
+  onApplyCondition: (params: {
+    character_id: string; condition_id: string; first_phase_turns: number;
+    source_note?: string; effect_values?: Record<string, number>
+  }) => Promise<unknown>
 }
 
-export default function CharacterCard({ character, charConditions, groups, conditions, phases, turnsPerMinute, isCurrentTurn, onApplyCondition }: Props) {
+export default function CharacterCard({ character, charConditions, groups, conditions, phases, phaseEffects, turnsPerMinute, isCurrentTurn, onApplyCondition }: Props) {
   const [showApply, setShowApply] = useState(false)
   const [showLog, setShowLog] = useState(false)
 
@@ -56,7 +60,7 @@ export default function CharacterCard({ character, charConditions, groups, condi
         {activeConditions.map(cc => {
           const cond = conditions.find(c => c.id === cc.condition_id)
           const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
-          return <ConditionBadge key={cc.id} cc={cc} condition={cond} phase={phase} turnsPerMinute={turnsPerMinute} />
+          return <ConditionBadge key={cc.id} cc={cc} condition={cond} phase={phase} effects={phaseEffects} turnsPerMinute={turnsPerMinute} />
         })}
       </div>
 
@@ -105,6 +109,7 @@ export default function CharacterCard({ character, charConditions, groups, condi
           groups={groups}
           conditions={conditions}
           phases={phases}
+          phaseEffects={phaseEffects}
           turnsPerMinute={turnsPerMinute}
           onApply={onApplyCondition}
           onClose={() => setShowApply(false)}

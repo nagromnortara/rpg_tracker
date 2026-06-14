@@ -6,6 +6,24 @@ interface ActionState {
   error: string | null
 }
 
+// Resolved dice values for the phase being entered, plus a duration roll.
+export interface DiceRollResult {
+  character_condition_id: string
+  rolled_turns: number
+  effect_values?: Record<string, number>
+}
+
+// A fired-effect row the client asks the server to persist to effect_log.
+export interface EffectLogInput {
+  character_id: string
+  condition_id: string
+  turn: number
+  label: string
+  target: string
+  value: number
+  detail: string
+}
+
 function useAction<TArgs extends unknown[], TResult>(
   fn: (...args: TArgs) => Promise<TResult>
 ): [(...args: TArgs) => Promise<TResult>, ActionState] {
@@ -39,11 +57,12 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     )})
   )
 
-  const [advanceTime] = useAction((minutes: number, diceRolls: { character_condition_id: string; rolled_turns: number }[] = []) =>
+  const [advanceTime] = useAction((minutes: number, diceRolls: DiceRollResult[] = [], effectLog: EffectLogInput[] = []) =>
     call('advance_time', {
       p_campaign_id: campaignId, p_admin_token: adminToken,
       p_minutes: minutes,
       p_dice_rolls: diceRolls,
+      p_effect_log: effectLog,
     })
   )
 
@@ -90,6 +109,26 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     call('delete_condition_phase', { p_admin_token: adminToken, p_condition_id: conditionId, p_id: id })
   )
 
+  const [upsertPhaseEffect] = useAction((params: {
+    id?: string; phase_id: string; timing: string; target: string;
+    value_type: string; value_expression: string; sort_order: number
+  }) =>
+    call<string>('upsert_phase_effect', {
+      p_admin_token: adminToken,
+      p_phase_id: params.phase_id,
+      p_id: params.id ?? null,
+      p_timing: params.timing,
+      p_target: params.target,
+      p_value_type: params.value_type,
+      p_value_expression: params.value_expression,
+      p_sort_order: params.sort_order,
+    })
+  )
+
+  const [deletePhaseEffect] = useAction((phaseId: string, id: string) =>
+    call('delete_phase_effect', { p_admin_token: adminToken, p_phase_id: phaseId, p_id: id })
+  )
+
   const [addCharacter] = useAction((name: string, isNpc = false) =>
     call<{ id: string; player_token: string }>('add_character', {
       p_campaign_id: campaignId, p_admin_token: adminToken, p_name: name, p_is_npc: isNpc,
@@ -105,7 +144,8 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
   )
 
   const [applyCondition] = useAction((params: {
-    character_id: string; condition_id: string; first_phase_turns: number; source_note?: string
+    character_id: string; condition_id: string; first_phase_turns: number;
+    source_note?: string; effect_values?: Record<string, number>
   }) =>
     call<string>('apply_condition', {
       p_campaign_id: campaignId, p_admin_token: adminToken,
@@ -113,6 +153,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
       p_condition_id: params.condition_id,
       p_first_phase_turns: params.first_phase_turns,
       p_source_note: params.source_note ?? null,
+      p_effect_values: params.effect_values ?? {},
     })
   )
 
@@ -127,11 +168,12 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     call('switch_to_exploration', { p_campaign_id: campaignId, p_admin_token: adminToken })
   )
 
-  const [endTurnAdvance] = useAction((characterId: string, diceRolls: { character_condition_id: string; rolled_turns: number }[] = []) =>
+  const [endTurnAdvance] = useAction((characterId: string, diceRolls: DiceRollResult[] = [], effectLog: EffectLogInput[] = []) =>
     call('end_turn_advance', {
       p_campaign_id: campaignId, p_admin_token: adminToken,
       p_character_id: characterId,
       p_dice_rolls: diceRolls,
+      p_effect_log: effectLog,
     })
   )
 
@@ -144,6 +186,8 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     deleteCondition,
     upsertPhase,
     deletePhase,
+    upsertPhaseEffect,
+    deletePhaseEffect,
     addCharacter,
     deactivateCharacter,
     reactivateCharacter,
