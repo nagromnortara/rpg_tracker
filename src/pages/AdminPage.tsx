@@ -9,6 +9,7 @@ import InitiativeSetupModal from '../components/admin/InitiativeSetupModal'
 import CharacterCard from '../components/admin/CharacterCard'
 import SettingsPanel from '../components/admin/SettingsPanel'
 import EffectLogPanel from '../components/EffectLogPanel'
+import Modal from '../components/ui/Modal'
 
 export default function AdminPage() {
   const { campaignId, adminToken } = useParams<{ campaignId: string; adminToken: string }>()
@@ -17,6 +18,8 @@ export default function AdminPage() {
 
   const [showSettings, setShowSettings] = useState(false)
   const [showInitiative, setShowInitiative] = useState(false)
+  const [showExplorationConfirm, setShowExplorationConfirm] = useState(false)
+  const [switching, setSwitching] = useState(false)
   const [mobileTab, setMobileTab] = useState<'characters' | 'controls'>('characters')
   const isMobile = useIsMobile()
 
@@ -59,7 +62,13 @@ export default function AdminPage() {
   }
 
   async function handleSwitchToExploration() {
-    await actions.switchToExploration()
+    setSwitching(true)
+    try {
+      await actions.switchToExploration()
+      setShowExplorationConfirm(false)
+    } finally {
+      setSwitching(false)
+    }
   }
 
   const controlsPanel = (
@@ -98,7 +107,7 @@ export default function AdminPage() {
       ) : (
         <button
           className="btn btn-secondary"
-          onClick={handleSwitchToExploration}
+          onClick={() => setShowExplorationConfirm(true)}
           style={{ fontSize: '0.82rem', padding: '0.55rem' }}
         >
           🕐 Return to Exploration
@@ -235,6 +244,26 @@ export default function AdminPage() {
           onConfirm={handleSwitchToTactical}
           onClose={() => setShowInitiative(false)}
         />
+      )}
+
+      {/* Confirm return to exploration */}
+      {showExplorationConfirm && (
+        <Modal title="Return to Exploration?" onClose={() => !switching && setShowExplorationConfirm(false)}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-secondary)', fontSize: '0.9rem', lineHeight: 1.5 }}>
+              This ends tactical mode. NPCs will be deactivated and every character's
+              initiative order will be cleared. Active conditions are kept.
+            </p>
+            <div style={{ display: 'flex', gap: '0.75rem' }}>
+              <button className="btn btn-secondary" type="button" onClick={() => setShowExplorationConfirm(false)} disabled={switching} style={{ flex: 1 }}>
+                Cancel
+              </button>
+              <button className="btn btn-primary" type="button" onClick={handleSwitchToExploration} disabled={switching} style={{ flex: 1 }}>
+                {switching ? 'Switching…' : 'Return to Exploration'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {/* Settings drawer */}
