@@ -17,9 +17,10 @@ interface Props {
     character_id: string; condition_id: string; first_phase_turns: number;
     source_note?: string; effect_values?: Record<string, number>
   }) => Promise<unknown>
+  onRemoveCondition: (characterConditionId: string) => Promise<unknown>
 }
 
-export default function CharacterCard({ character, charConditions, groups, conditions, phases, phaseEffects, turnsPerMinute, isCurrentTurn, onApplyCondition }: Props) {
+export default function CharacterCard({ character, charConditions, groups, conditions, phases, phaseEffects, turnsPerMinute, isCurrentTurn, onApplyCondition, onRemoveCondition }: Props) {
   const [showApply, setShowApply] = useState(false)
   const [showLog, setShowLog] = useState(false)
 
@@ -60,7 +61,7 @@ export default function CharacterCard({ character, charConditions, groups, condi
         {activeConditions.map(cc => {
           const cond = conditions.find(c => c.id === cc.condition_id)
           const phase = phases.find(p => p.condition_id === cc.condition_id && p.phase_order === cc.current_phase)
-          return <ConditionBadge key={cc.id} cc={cc} condition={cond} phase={phase} effects={phaseEffects} turnsPerMinute={turnsPerMinute} />
+          return <ConditionBadge key={cc.id} cc={cc} condition={cond} phase={phase} effects={phaseEffects} turnsPerMinute={turnsPerMinute} onDismiss={onRemoveCondition} />
         })}
       </div>
 

@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { formatRemaining, remainingUrgency } from '../../lib/dice'
 import { resolveEffectValue, currentRound, effectsForRound } from '../../lib/effects'
 import type { CharacterCondition, Condition, ConditionPhase, PhaseEffect } from '../../lib/types'
@@ -8,6 +9,7 @@ interface Props {
   phase: ConditionPhase | undefined
   effects: PhaseEffect[]
   turnsPerMinute: number
+  onDismiss?: (ccId: string) => Promise<unknown>
 }
 
 const TIMING_SHORT: Record<string, string> = {
@@ -18,9 +20,17 @@ function fmtValue(v: number): string {
   return v > 0 ? `+${v}` : `${v}`
 }
 
-export default function ConditionBadge({ cc, condition, phase, effects, turnsPerMinute }: Props) {
+export default function ConditionBadge({ cc, condition, phase, effects, turnsPerMinute, onDismiss }: Props) {
+  const [confirming, setConfirming] = useState(false)
+  const [removing, setRemoving] = useState(false)
   const unit = phase?.duration_unit ?? 'turns'
   const urgency = remainingUrgency(cc.remaining_turns, unit, turnsPerMinute)
+
+  async function handleDismiss() {
+    if (!onDismiss) return
+    setRemoving(true)
+    try { await onDismiss(cc.id) } finally { setRemoving(false); setConfirming(false) }
+  }
 
   const borderColor = urgency === 'danger' ? 'var(--text-danger)'
     : urgency === 'warning' ? '#c8a900'
@@ -45,13 +55,39 @@ export default function ConditionBadge({ cc, condition, phase, effects, turnsPer
         <span style={{ color: 'var(--text-primary)', fontSize: '0.85rem', fontWeight: 'bold' }}>
           {condition?.name ?? 'Unknown'}
         </span>
-        <span style={{
-          color: borderColor,
-          fontSize: '0.75rem',
-          fontFamily: 'var(--font-body)',
-          flexShrink: 0,
-        }}>
-          {formatRemaining(cc.remaining_turns, unit, turnsPerMinute)}
+        <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexShrink: 0 }}>
+          <span style={{ color: borderColor, fontSize: '0.75rem', fontFamily: 'var(--font-body)' }}>
+            {formatRemaining(cc.remaining_turns, unit, turnsPerMinute)}
+          </span>
+          {onDismiss && (confirming ? (
+            <>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', color: 'var(--text-danger)' }}
+                onClick={handleDismiss}
+                disabled={removing}
+              >
+                {removing ? '…' : 'Yes'}
+              </button>
+              <button
+                className="btn btn-ghost"
+                style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', color: 'var(--text-muted)' }}
+                onClick={() => setConfirming(false)}
+                disabled={removing}
+              >
+                No
+              </button>
+            </>
+          ) : (
+            <button
+              className="btn btn-ghost"
+              style={{ fontSize: '0.68rem', padding: '0.1rem 0.35rem', color: 'var(--text-muted)' }}
+              onClick={() => setConfirming(true)}
+              title="Dismiss condition"
+            >
+              ✕
+            </button>
+          ))}
         </span>
       </div>
       {cc.source_note && (

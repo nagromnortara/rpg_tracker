@@ -134,6 +134,7 @@ export default function AdminPage() {
               turnsPerMinute={campaign.turns_per_minute}
               isCurrentTurn={char.id === currentTurnCharId}
               onApplyCondition={actions.applyCondition}
+              onRemoveCondition={actions.removeCondition}
             />
           ))}
         </div>

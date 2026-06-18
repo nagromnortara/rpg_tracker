@@ -143,6 +143,13 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     call('reactivate_character', { p_campaign_id: campaignId, p_admin_token: adminToken, p_character_id: characterId })
   )
 
+  const [removeCondition] = useAction((characterConditionId: string) =>
+    call('admin_remove_condition', {
+      p_campaign_id: campaignId, p_admin_token: adminToken,
+      p_character_condition_id: characterConditionId,
+    })
+  )
+
   const [applyCondition] = useAction((params: {
     character_id: string; condition_id: string; first_phase_turns: number;
     source_note?: string; effect_values?: Record<string, number>
@@ -192,6 +199,7 @@ export function useAdminActions(campaignId: string, adminToken: string, onMutate
     deactivateCharacter,
     reactivateCharacter,
     applyCondition,
+    removeCondition,
     switchToTactical,
     switchToExploration,
     endTurnAdvance,
